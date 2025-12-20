@@ -17,7 +17,7 @@ def main():
     load_dotenv()
 
     # Create structure to store inventory pages
-    dir_inventory = ".inventory"
+    dir_inventory = "_inventory"
     if not os.path.exists(dir_inventory):
         os.makedirs(dir_inventory)
 
@@ -26,9 +26,14 @@ def main():
     if not os.path.exists(dir_today_inventory):
         os.makedirs(dir_today_inventory)
 
-    file_today_workspaces = os.path.join(dir_today_inventory, "workspaces")
-    file_today_workspaces_json = file_today_workspaces + ".json"
-    file_today_workspaces_md = file_today_workspaces + ".md"
+    dir_today_inventory_json = os.path.join(dir_today_inventory, "json")
+    if not os.path.exists(dir_today_inventory_json):
+        os.makedirs(dir_today_inventory_json)
+
+    dir_today_inventory_md = os.path.join(dir_today_inventory, "md")
+    if not os.path.exists(dir_today_inventory_md):
+        os.makedirs(dir_today_inventory_md)
+
 
     # Get a token from Keycloak with given credential
     keycloak = Keycloak(
@@ -45,32 +50,38 @@ def main():
         token = keycloak_token["access_token"],
     )
 
-    workspaces_dict={}
+    deployments_dict={}
     for organization in cosmotech_api.organizations_json():
+        organization_id = f"{organization['id']}"
         for solution in cosmotech_api.solutions_json(organization['id']):
             for workspace in cosmotech_api.workspaces_json(organization['id']):
-                workspaces_list = [
-                    ("organization_id",         f"{organization['id']}"),
-                    ("organization_name",       f"{organization['name']}"),
+                workspaces = [
+                    ("organization_id",         organization_id),
+                    ("workspace_id",            f"{workspace['id']}"),
                     ("solution_id",             f"{solution['id']}"),
+                    ("organization_name",       f"{organization['name']}"),
+                    ("workspace_name",          f"{workspace['name']}"),
                     ("solution_name",           f"{solution['name']}"),
                     ("solution_repository",     f"{solution['repository']}"),
                     ("solution_version",        f"{solution['version']}"),
-                    ("workspace_id",            f"{workspace['id']}"),
-                    ("workspace_name",          f"{workspace['name']}"),
-                    # ("workspace_acl",           f"{workspace['security']['accessControlList']}"),        
                 ]
-                workspaces_dict = dict(workspaces_list)
-                print(workspaces_dict)                
+                deployments_dict.update(dict(workspaces))
 
-    # Save inventory of the day - .inventory/<date>/workspaces.json
-    with open(file_today_workspaces_json, "w") as file_json:
-        file_json.write(str(workspaces_dict).replace("'", "\""))
+        print(deployments_dict)
 
-    # Create markdown of the day - .inventory/<date>/workspaces.md
-    markdown = Markdown(file_today_workspaces_json, "Workspace")
-    with open(file_today_workspaces_md, "w") as file_md:
-        file_md.write(markdown.jsonToMarkdown())
+        file_json = os.path.join(dir_today_inventory_json, organization_id + ".json")
+        file_md = os.path.join(dir_today_inventory_md, organization_id + ".md")
+
+        # Save inventory of the day to file <date>/workspaces.json
+        with open(file_json, 'w') as f:
+            json.dump(deployments_dict, f)
+            print(f"file created: {f}")
+
+        # Create markdown of the day to file <date>/workspaces.md
+        markdown = Markdown(file_json, "Temporary title of the markdown file")
+        with open(file_md, "w") as f:
+            f.write(markdown.jsonToMarkdown())
+            print(f"file created: {f}")
 
 
 if __name__ == "__main__":
