@@ -46,7 +46,7 @@ class CosmotechAPI():
         data = r.json()
         return data
 
-    # All solutions
+    # All solutions in a given organization
     def solutions_json(self, organization_id):
         r = requests.get(self.url + '/organizations/' + organization_id + '/solutions', headers=self.headers)
         # if r.status_code != "200":
@@ -55,7 +55,7 @@ class CosmotechAPI():
         data = r.json()
         return data
 
-    # All workspaces
+    # All workspaces in a given organization
     def workspaces_json(self, organization_id):
         r = requests.get(self.url + '/organizations/' + organization_id + '/workspaces', headers=self.headers)
         # if r.status_code != "200":

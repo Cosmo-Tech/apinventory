@@ -3,16 +3,24 @@
 This program intends to list existing deployments of Cosmo Tech tenants.
 
 It will reach Kubernetes clusters to get the list below:
-- Kubernetes clusters (names, versions, regions)
+- Kubernetes clusters (names, versions, regions, URL)
 - Cosmo Tech API objects (IDs & names of organizations, solutions & workspaces)
-- Helm Chart (names, versions)
+- Helm Charts (names, versions, services URL)
 
 <br>
 
 Inventory of the day is stored in a dedicated directory and is available in markdown format.
 
 ## How to
-### Use from source
+### Get Kubernetes clusters contexts
+> This program uses a dedicated file `_kubeconfig` file instead of the default $USER/.kube/config file.
+* Get contexts
+	* AKS
+		```
+		az aks get-credentials --resource-group CLUSTER_RESOURCE_GROUP --name CLUSTER_NAME --file _kubeconfig
+		```
+
+### Run from source
 * clone current repo
 	```
 	git clone git@github.com:Cosmo-Tech/apinventory.git && cd apinventory
@@ -35,7 +43,7 @@ Inventory of the day is stored in a dedicated directory and is available in mark
 	python -m main
 	```
 
-### Use with Docker
+### Run from Docker
 * get docker-compose.yaml
 	```
 	wget https://raw.githubusercontent.com/Cosmo-Tech/apinventory/refs/heads/main/docker-compose.yaml
@@ -44,13 +52,60 @@ Inventory of the day is stored in a dedicated directory and is available in mark
 	docker compose up -d
 	```
 
-### Setup cron job
-* to do
+## Inventory details
+### Kubernetes cluter
+> Page name is `[Cluster] *cluster_name*`
+
+**Cluster properties**
+| Item     | Value            |
+|----------|------------------|
+| Name	   | *name*           |
+| Version  | *version*        |
+| Region   | *region*         |
+| URL      | *cluster_url*    |
+| Keycloak | *iam_url*        |
+| Grafana  | *monitoring_url* |
+| Harbor   | *registry_url*   |
 
 
+**Cluter-wide Helm Charts**
+| Name      | Chart version | App version  |
+|-----------|---------------|--------------|
+| 1. *name* | 1. *version*  | 1. *version* |
+| 2. *name* | 2. *version*  | 2. *version* |
+| n. *name* | n. *version*  | n. *version* |
 
+### Tenant
+> Page name is `[Tenant] *tenant_name*`
 
+**Tenant properties**
+| Item           | Value            |
+|----------------|------------------|
+| Swagger URL    | *url*            |
 
+**Tenant Helm Charts**
+| Name      | Chart version | App version  |
+|-----------|---------------|--------------|
+| 1. *name* | 1. *version*  | 1. *version* |
+| 2. *name* | 2. *version*  | 2. *version* |
+| n. *name* | n. *version*  | n. *version* |
+
+### Workspace
+> Page name is `[Workspace] *workspace_name*`
+
+**Workspace properties**
+| Item                 | Value                 |
+|--------------------- |-----------------------|
+| organization_id      | *organization_id*     |
+| workspace_id         | *workspace_id*        |
+| solution_id          | *solution_id*         |
+| organization_name    | *organization_name*   |
+| workspace_name       | *workspace_name*      |
+| solution_name        | *solution_name*       |
+| solution_repository  | *solution_repository* |
+| solution_version     | *solution_version*    |
+| webapp_url           | *webapp_url*          |
+| inventory_date       | *date*                |
 
 
 

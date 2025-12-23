@@ -5,5 +5,5 @@ services:
     # image: ghcr.io/cosmo-tech/apiventory:latest
     restart: unless-stopped
     volumes:
-      - ./inventory:/apiventory/_inventory/
+      - ./inventory:/apiventory/_inventory/docker/
       - ./_env:/apiventory/.env

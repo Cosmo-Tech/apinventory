@@ -3,37 +3,136 @@ from datetime import datetime
 import os
 import json
 import jsonschema_markdown
-
-from src.api.Cosmotech import CosmotechAPI, Keycloak
-from src.views.Markdown import Markdown
+import yaml # useful for kubeconfig files
+import shutil
 
 from dotenv import load_dotenv
+
+from src.api.Cosmotech import CosmotechAPI, Keycloak
+from src.api.Kubernetes import KubeCluster
+from src.views.Markdown import Markdown
+import src.helper as helper
+
+
+now = datetime.today().strftime('%Y-%m-%d')
+
+dir_inventory            = "_inventory"
+dir_today_inventory      = os.path.join(dir_inventory, now)
+dir_today_inventory_json = os.path.join(dir_today_inventory, "json")
+dir_today_inventory_md   = os.path.join(dir_today_inventory, "md")
+
+kubeconfig_file = '_kubeconfig'
 
 
 def main():
 
-    now = datetime.today().strftime('%Y-%m-%d')
-
     load_dotenv()
 
-    # Create structure to store inventory pages
-    dir_inventory = "_inventory"
-    if not os.path.exists(dir_inventory):
-        os.makedirs(dir_inventory)
+    # Prepare structure of the day
+    if os.path.exists(dir_today_inventory):
+        shutil.rmtree(dir_today_inventory)
+    for dir in [dir_inventory, dir_today_inventory, dir_today_inventory_json, dir_today_inventory_md]:
+        if not os.path.exists(dir):
+            os.makedirs(dir)
 
-    # Create a the directory of the day
-    dir_today_inventory = os.path.join(dir_inventory, now)
-    if not os.path.exists(dir_today_inventory):
-        os.makedirs(dir_today_inventory)
+    for context in get_all_contexts(kubeconfig_file):        
+        # Cluster JSON of the day
+        dir_cluster    = os.path.join(dir_today_inventory_json, context)
+        dir_namespaces = os.path.join(dir_today_inventory_json, context, "namespaces")
+        dir_workspaces = os.path.join(dir_namespaces, "workspaces")
 
-    dir_today_inventory_json = os.path.join(dir_today_inventory, "json")
-    if not os.path.exists(dir_today_inventory_json):
-        os.makedirs(dir_today_inventory_json)
+        # Prepare structure
+        for dir in [dir_cluster, dir_namespaces, dir_workspaces]:
+            if not os.path.exists(dir):
+                os.makedirs(dir)
 
-    dir_today_inventory_md = os.path.join(dir_today_inventory, "md")
-    if not os.path.exists(dir_today_inventory_md):
-        os.makedirs(dir_today_inventory_md)
+        cluster_properties(kubeconfig_file, context, dir_cluster)
+        cluster_helmcharts(kubeconfig_file, context, os.path.join(dir_cluster, 'namespaces'))
+        
+    # tenants()
+    # workspaces()
+    # create_all_markdown() # Create all markdown files of the day
 
+
+# Get all Kubernetes contexts from a given kubeconfig file
+# - Input is YAML (because kubeconfig files are mainly YAML by default)
+# - Output is JSON
+def get_all_contexts(kubeconfig_file):
+    with open(kubeconfig_file) as file:
+        kubeconfig = yaml.load(file, Loader=yaml.FullLoader)
+
+    contexts = []
+    for context in kubeconfig['contexts']:
+        contexts.append(context['name'])
+
+    return contexts
+
+
+# Save cluster properties in a file
+def cluster_properties(kubeconfig_file, context, dir_output):
+    # Get:
+    # - Cluster name
+    # - Cluster region
+    # - Cluster version
+
+    cluster = KubeCluster(kubeconfig_file, context)
+    name    = cluster.get_cluster_name()
+    region  = cluster.get_cluster_region()
+    version = cluster.get_cluster_version()
+    url     = cluster.get_cluster_url()
+
+    cluster_dict={}
+    properties = [
+        ("name",    name),
+        ("region",  region),
+        ("version", version),
+        ("url",     url),
+    ]
+    cluster_dict.update(dict(properties))
+
+    # Save to JSON file of the day
+    helper.create_json_file(dir_output, 'cluster', cluster_dict)
+
+
+# Save cluster-wide Helm Charts in a file
+def cluster_helmcharts(kubeconfig_file, context, dir_output):
+    # Get:
+    # - Cluster-wide Helm Charts names
+    # - Cluster-wide Helm Charts versions
+
+    cluster = KubeCluster(kubeconfig_file, context)
+    for namespace in cluster.get_namespaces():
+        # Namespaces to avoid
+        filters = ['kube-', '-system', 'default', 'tigera-operator']
+        if namespace not in filters and not namespace.startswith(tuple(filters)) and not namespace.endswith(tuple(filters)):
+            # Save to JSON file of the day
+            helper.create_json_file(dir_output, "ns-" + namespace, cluster.get_helmcharts(namespace))    
+
+
+def tenants_properties():
+    # Get:
+    # - Cosmo Tech API Swagger URL
+    print("todo")
+
+
+def tenants_helmcharts():
+    # Get:
+    # - Tenant name
+    # - Tenant Helm Charts names
+    # - Tenant Helm Charts versions
+    print("todo")
+
+
+def workspaces_properties():
+    # Get:
+    # - Organizations id
+    # - Organizations name
+    # - Solutions id
+    # - Solutions name
+    # - Solutions repository
+    # - Solutions version
+    # - Workspaces id
+    # - Workspaces name
 
     # Get a token from Keycloak with given credential
     keycloak = Keycloak(
@@ -52,38 +151,41 @@ def main():
 
     deployments_dict={}
     for organization in cosmotech_api.organizations_json():
-        organization_id = f"{organization['id']}"
         for solution in cosmotech_api.solutions_json(organization['id']):
             for workspace in cosmotech_api.workspaces_json(organization['id']):
-                workspaces = [
-                    ("organization_id",         organization_id),
-                    ("workspace_id",            f"{workspace['id']}"),
-                    ("solution_id",             f"{solution['id']}"),
-                    ("organization_name",       f"{organization['name']}"),
-                    ("workspace_name",          f"{workspace['name']}"),
-                    ("solution_name",           f"{solution['name']}"),
-                    ("solution_repository",     f"{solution['repository']}"),
-                    ("solution_version",        f"{solution['version']}"),
+                workspace_id = f"{workspace['id']}"
+                properties = [
+                    ("organization_id",         organization.get('id', 'n/a')),
+                    ("workspace_id",            workspace.get('id', 'n/a')),
+                    ("solution_id",             solution.get('id', 'n/a')),
+                    ("organization_name",       organization.get('name', 'n/a')),
+                    ("workspace_name",          workspace.get('name', 'n/a')),
+                    ("solution_name",           solution.get('name', 'n/a')),
+                    ("solution_repository",     solution.get('repository', 'n/a')),
+                    ("solution_version",        solution.get('version', 'n/a')),
+                    ("inventory_date",          now),
                 ]
-                deployments_dict.update(dict(workspaces))
+                deployments_dict.update(dict(properties))
 
         print(deployments_dict)
 
-        file_json = os.path.join(dir_today_inventory_json, organization_id + ".json")
-        file_md = os.path.join(dir_today_inventory_md, organization_id + ".md")
-
-        # Save inventory of the day to file <date>/workspaces.json
+        # Save to JSON file of the day
+        file_json = os.path.join(dir_today_inventory_json, workspace_id + ".json")
         with open(file_json, 'w') as f:
             json.dump(deployments_dict, f)
             print(f"file created: {f}")
 
-        # Create markdown of the day to file <date>/workspaces.md
-        markdown = Markdown(file_json, "Temporary title of the markdown file")
-        with open(file_md, "w") as f:
-            f.write(markdown.jsonToMarkdown())
-            print(f"file created: {f}")
+
+# def create_all_markdown():
+#     print("creating markdown files...")
+#     for file_json in os.scandir(dir_today_inventory_json):  
+#         if file_json.is_file():
+#             markdown = Markdown(file_json, "Temporary title of the markdown file")
+#             file_md = os.path.join(dir_today_inventory_md, os.path.basename(file_json).replace("json", "md"))
+#             with open(file_md, "w") as f:
+#                 f.write(markdown.json_to_markdown_itemvalue())
+#                 print(f"file created: {f}")
 
 
 if __name__ == "__main__":
     main()
-
