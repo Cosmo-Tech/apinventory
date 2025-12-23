@@ -56,58 +56,55 @@ Inventory of the day is stored in a dedicated directory and is available in mark
 ### Kubernetes cluter
 > Page name is `[Cluster] *cluster_name*`
 
-**Cluster properties**
-| Item     | Value            |
-|----------|------------------|
-| Name	   | *name*           |
-| Version  | *version*        |
-| Region   | *region*         |
-| URL      | *cluster_url*    |
-| Keycloak | *iam_url*        |
-| Grafana  | *monitoring_url* |
-| Harbor   | *registry_url*   |
+#### Cluster properties
+| Item     | Value     |
+|----------|-----------|
+| Name	   | *name*    |
+| Version  | *version* |
+| Region   | *region*  |
+| URL      | *url*     |
+| Keycloak | *url*     |
+| Grafana  | *url*     |
+| Harbor   | *url*     |
 
-
-**Cluter-wide Helm Charts**
-| Name      | Chart version | App version  |
-|-----------|---------------|--------------|
-| 1. *name* | 1. *version*  | 1. *version* |
-| 2. *name* | 2. *version*  | 2. *version* |
-| n. *name* | n. *version*  | n. *version* |
+#### Cluter-wide Helm Charts
+| Namespace      | Name      | Chart version | App version  |
+|----------------|-----------|---------------|--------------|
+| 1. *namespace* | 1. *name* | 1. *version*  | 1. *version* |
+| 1. *namespace* | 2. *name* | 2. *version*  | 2. *version* |
+| 1. *namespace* | n. *name* | n. *version*  | n. *version* |
 
 ### Tenant
 > Page name is `[Tenant] *tenant_name*`
 
-**Tenant properties**
+#### Tenant properties
 | Item           | Value            |
 |----------------|------------------|
 | Swagger URL    | *url*            |
 
-**Tenant Helm Charts**
-| Name      | Chart version | App version  |
-|-----------|---------------|--------------|
-| 1. *name* | 1. *version*  | 1. *version* |
-| 2. *name* | 2. *version*  | 2. *version* |
-| n. *name* | n. *version*  | n. *version* |
+#### Tenant Helm Charts
+| Namespace      | Name      | Chart version | App version  |
+|----------------|-----------|---------------|--------------|
+| 1. *namespace* | 1. *name* | 1. *version*  | 1. *version* |
+| 1. *namespace* | 2. *name* | 2. *version*  | 2. *version* |
+| 1. *namespace* | n. *name* | n. *version*  | n. *version* |
 
 ### Workspace
 > Page name is `[Workspace] *workspace_name*`
 
-**Workspace properties**
-| Item                 | Value                 |
-|--------------------- |-----------------------|
-| organization_id      | *organization_id*     |
-| workspace_id         | *workspace_id*        |
-| solution_id          | *solution_id*         |
-| organization_name    | *organization_name*   |
-| workspace_name       | *workspace_name*      |
-| solution_name        | *solution_name*       |
-| solution_repository  | *solution_repository* |
-| solution_version     | *solution_version*    |
-| webapp_url           | *webapp_url*          |
-| inventory_date       | *date*                |
-
-
+#### Workspace properties
+| Item                 | Value        |
+|--------------------- |--------------|
+| organization_id      | *id*         |
+| workspace_id         | *id*         |
+| solution_id          | *id*         |
+| organization_name    | *name*       |
+| workspace_name       | *name*       |
+| solution_name        | *name*       |
+| solution_repository  | *repository* |
+| solution_version     | *version*    |
+| webapp_url           | *url*        |
+| inventory_date       | *date*       |
 
 ## Developers
 Must be able to read any API, and we filter what we need

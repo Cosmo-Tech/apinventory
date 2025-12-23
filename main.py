@@ -35,20 +35,28 @@ def main():
         if not os.path.exists(dir):
             os.makedirs(dir)
 
-    for context in get_all_contexts(kubeconfig_file):        
-        # Cluster JSON of the day
+    for context in get_all_contexts(kubeconfig_file):
+        # Structure JSON of the day
         dir_cluster    = os.path.join(dir_today_inventory_json, context)
         dir_namespaces = os.path.join(dir_today_inventory_json, context, "namespaces")
         dir_workspaces = os.path.join(dir_namespaces, "workspaces")
-
-        # Prepare structure
         for dir in [dir_cluster, dir_namespaces, dir_workspaces]:
             if not os.path.exists(dir):
                 os.makedirs(dir)
 
+        # # Structure Markdown of the day
+        # dir_cluster    = os.path.join(dir_today_inventory_md, context)
+        # dir_namespaces = os.path.join(dir_today_inventory_md, context, "namespaces")
+        # dir_workspaces = os.path.join(dir_namespaces, "workspaces")
+        # for dir in [dir_cluster, dir_namespaces, dir_workspaces]:
+        #     if not os.path.exists(dir):
+        #         os.makedirs(dir)
+
+
         cluster_properties(kubeconfig_file, context, dir_cluster)
-        cluster_helmcharts(kubeconfig_file, context, os.path.join(dir_cluster, 'namespaces'))
-        
+        cluster_helmcharts(kubeconfig_file, context, dir_cluster)
+        # cluster_helmcharts(kubeconfig_file, context, os.path.join(dir_cluster, 'namespaces'))
+
     # tenants()
     # workspaces()
     # create_all_markdown() # Create all markdown files of the day
@@ -83,15 +91,18 @@ def cluster_properties(kubeconfig_file, context, dir_output):
 
     cluster_dict={}
     properties = [
-        ("name",    name),
-        ("region",  region),
-        ("version", version),
-        ("url",     url),
+        ("name",            name),
+        ("region",          region),
+        ("version",         version),
+        ("url",             url),
+        ("keycloak_url",    url + '/keycloak/'),
+        ("monitoring_url",  url + '/monitoring/'),
+        ("harbor_url",      url + '/harbor/'),
     ]
     cluster_dict.update(dict(properties))
 
     # Save to JSON file of the day
-    helper.create_json_file(dir_output, 'cluster', cluster_dict)
+    helper.create_json_file(os.path.join(dir_output, 'cluster-properties.json'), cluster_dict)
 
 
 # Save cluster-wide Helm Charts in a file
@@ -101,12 +112,29 @@ def cluster_helmcharts(kubeconfig_file, context, dir_output):
     # - Cluster-wide Helm Charts versions
 
     cluster = KubeCluster(kubeconfig_file, context)
+    files_json_to_merge = []
+    helmcharts_dict = {}
     for namespace in cluster.get_namespaces():
-        # Namespaces to avoid
+        # Namespaces to avoid (filtered from their name)
         filters = ['kube-', '-system', 'default', 'tigera-operator']
         if namespace not in filters and not namespace.startswith(tuple(filters)) and not namespace.endswith(tuple(filters)):
             # Save to JSON file of the day
-            helper.create_json_file(dir_output, "ns-" + namespace, cluster.get_helmcharts(namespace))    
+            file_json = os.path.join(dir_output, "ns-" + namespace + '.json')
+            helmcharts_list = cluster.get_helmcharts(namespace)
+
+            # Avoid namespaces without Helm Charts installed
+            if len(helmcharts_list) > 0:
+                helper.create_json_file(file_json, helmcharts_list)
+
+                # Keep only separated namespaces files and merge cluster-wide helmcharts in a single file
+                if 'tenant' in os.path.basename(file_json):
+                    helper.rename_file(file_json, namespace + '-helmcharts.json')
+                else:
+                    files_json_to_merge.append(file_json)
+
+    # Merge all cluster-wide in one single file
+    helper.merge_json_files(files_json_to_merge, os.path.join(dir_output, 'cluster-helmcharts.json'), delete_originals=True)
+
 
 
 def tenants_properties():
@@ -163,7 +191,7 @@ def workspaces_properties():
                     ("solution_name",           solution.get('name', 'n/a')),
                     ("solution_repository",     solution.get('repository', 'n/a')),
                     ("solution_version",        solution.get('version', 'n/a')),
-                    ("inventory_date",          now),
+                    # ("inventory_date",          now),
                 ]
                 deployments_dict.update(dict(properties))
 
