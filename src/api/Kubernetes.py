@@ -174,10 +174,27 @@ class KubeCluster:
 
         releases_list = []
         for secret in secrets.items:
-
             secret_name = secret.metadata.name
-            if 'sh.helm.release' in secret_name:
-                release_name = secret_name.split('.')[4]    # Get the release name from the secret name itself
-                releases_list.append(release_name)
+            release_name = secret_name.split('.')[4]        # Get the release name from the secret name itself
+            releases_list.append(release_name)
+
+            # if 'sh.helm.release' in secret_name:
+            #     release_name = secret_name.split('.')[4]    # Get the release name from the secret name itself
+            #     releases_list.append(release_name)
 
         return releases_list
+
+
+    # Get and decode a given secret from Kubernetes
+    def get_secret_decoded(self, namespace, secret_name):
+        secret = self.client_CoreV1Api.read_namespaced_secret(
+            namespace = namespace,
+            name = secret_name,
+            )
+
+        utf8_decoded = {}
+        for key, value in secret.data.items():
+            base64_decoded = base64.b64decode(value)
+            utf8_decoded[key] = base64_decoded.decode('utf-8')
+
+        return utf8_decoded

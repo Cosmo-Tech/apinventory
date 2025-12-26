@@ -1,7 +1,6 @@
 import os
 import json
 
-
 # Create a JSON file
 # Tips: content is well working with dict type
 def create_json_file(file_path, content):

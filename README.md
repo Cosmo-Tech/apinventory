@@ -54,7 +54,7 @@ Inventory of the day is stored in a dedicated directory and is available in mark
 
 ## Inventory details
 ### Kubernetes cluter
-> Page name is `[Cluster] *cluster_name*`
+> Page name is `[cluster] cluster_name`
 
 #### Cluster properties
 | Item     | Value     |
@@ -75,7 +75,7 @@ Inventory of the day is stored in a dedicated directory and is available in mark
 | 1. *namespace* | n. *name* | n. *version*  | n. *version* |
 
 ### Tenant
-> Page name is `[Tenant] *tenant_name*`
+> Page name is `[tenant] tenant_name`
 
 #### Tenant properties
 | Item           | Value            |
@@ -90,11 +90,12 @@ Inventory of the day is stored in a dedicated directory and is available in mark
 | 1. *namespace* | n. *name* | n. *version*  | n. *version* |
 
 ### Workspace
-> Page name is `[Workspace] *workspace_name*`
+> Page name is `[workspace] workspace_name`
 
 #### Workspace properties
 | Item                 | Value        |
 |--------------------- |--------------|
+| tenant_name          | *name*       |
 | organization_id      | *id*         |
 | workspace_id         | *id*         |
 | solution_id          | *id*         |

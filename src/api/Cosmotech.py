@@ -1,5 +1,4 @@
 import requests
-# import base64
 import json
 
 
@@ -14,7 +13,7 @@ class CosmotechAPI():
 
     # All organizations
     def organizations_json(self):
-        r = requests.get(self.url + '/organizations', headers=self.headers)
+        r = requests.get(self.url + 'organizations', headers=self.headers)
         # if r.status_code != "200":
         #     print('Cosmo Tech API authentication error: check client access')
         #     return
@@ -23,7 +22,7 @@ class CosmotechAPI():
 
     # All solutions in a given organization
     def solutions_json(self, organization_id):
-        r = requests.get(self.url + '/organizations/' + organization_id + '/solutions', headers=self.headers)
+        r = requests.get(self.url + 'organizations/' + organization_id + '/solutions', headers=self.headers)
         # if r.status_code != "200":
         #     print('Cosmo Tech API authentication error: check client access')
         #     return
@@ -32,7 +31,7 @@ class CosmotechAPI():
 
     # All workspaces in a given organization
     def workspaces_json(self, organization_id):
-        r = requests.get(self.url + '/organizations/' + organization_id + '/workspaces', headers=self.headers)
+        r = requests.get(self.url + 'organizations/' + organization_id + '/workspaces', headers=self.headers)
         # if r.status_code != "200":
         #     print('Cosmo Tech API authentication error: check client access')
         #     return

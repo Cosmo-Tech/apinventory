@@ -6,7 +6,7 @@ import jsonschema_markdown
 import yaml # useful for kubeconfig files
 import shutil
 
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
 from src.api.Kubernetes import KubeCluster
 from src.api.Keycloak import Keycloak
@@ -28,7 +28,7 @@ kubeconfig_file = '_kubeconfig'
 
 def main():
 
-    load_dotenv()
+    # load_dotenv()
 
     # Prepare structure of the day
     if os.path.exists(dir_today_inventory):
@@ -38,13 +38,29 @@ def main():
             os.makedirs(dir)
 
     for context in get_all_contexts(kubeconfig_file):
-        # Structure JSON of the day
-        dir_cluster    = os.path.join(dir_today_inventory_json, context)
-        dir_tenants = os.path.join(dir_today_inventory_json, context, "tenants")
-        dir_workspaces = os.path.join(dir_tenants, "workspaces")
-        for dir in [dir_cluster, dir_tenants, dir_workspaces]:
-            if not os.path.exists(dir):
-                os.makedirs(dir)
+        # Structure JSON of the day for clusters
+        dir_cluster = os.path.join(dir_today_inventory_json, context)
+        if not os.path.exists(dir_cluster):
+            os.makedirs(dir_cluster)
+
+        # Generate inventories
+        cluster_properties(kubeconfig_file, context, dir_cluster)
+        all_helmcharts(kubeconfig_file, context, dir_cluster)
+        tenants_properties(kubeconfig_file, context, dir_cluster)
+
+
+        # Structure JSON of the day for tenants (which host workspaces files)
+        cluster = KubeCluster(kubeconfig_file, context)
+        for namespace in cluster.get_namespaces():
+            if cluster.is_namespace_tenant(namespace):
+                dir_tenant = os.path.join(dir_today_inventory_json, cluster.get_cluster_name(), namespace)
+                if not os.path.exists(dir_tenant):
+                    os.makedirs(dir_tenant)
+
+                # Generate inventories
+                workspaces_properties(kubeconfig_file, context, dir_tenant, namespace)
+
+
 
         # # Structure Markdown of the day
         # dir_cluster    = os.path.join(dir_today_inventory_md, context)
@@ -55,11 +71,7 @@ def main():
         #         os.makedirs(dir)
 
 
-        cluster_properties(kubeconfig_file, context, dir_cluster)
-        all_helmcharts(kubeconfig_file, context, dir_cluster)
-        tenants_properties(kubeconfig_file, context, dir_cluster)
 
-    workspaces_properties()
     # create_all_markdown() # Create all markdown files of the day
 
 
@@ -159,27 +171,73 @@ def tenants_properties(kubeconfig_file, context, dir_output):
     for namespace in namespaces:
         if cluster.is_namespace_tenant(namespace):
 
-            for helm_release in cluster.get_namespaced_releases(namespace):
+            properties = [
+                ("tenant_name",     namespace),
+                ("swagger_url",     get_cosmotech_api_url(kubeconfig_file, context, namespace)),
+                ("inventory_date",  now),
+            ]
+            tenant_dict.update(dict(properties))
 
-                # Get the release name of the Cosmo Tech API chart
-                if 'cosmo' in helm_release and 'api' in helm_release:
-
-                    # Cosmo Tech API URL
-                    csm_api_path = cluster.get_helmchart_values(namespace, helm_release)['api']['version']
-                    csm_api_url = f"https://{cluster.get_cluster_url()}/{namespace}/{csm_api_path}/"
-
-                    properties = [
-                        ("tenant_name",     namespace),
-                        ("swagger_url",     csm_api_url),
-                        ("inventory_date",          now),
-                    ]
-                    tenant_dict.update(dict(properties))
-
-                    helper.create_json_file(os.path.join(dir_output, namespace + '-properties.json'), tenant_dict)
+            # Save to JSON file of the day
+            helper.create_json_file(os.path.join(dir_output, namespace + '-properties.json'), tenant_dict)
 
 
 
-def workspaces_properties():
+# def workspaces_properties():
+#     # Get:
+#     # - Organizations id
+#     # - Organizations name
+#     # - Solutions id
+#     # - Solutions name
+#     # - Solutions repository
+#     # - Solutions version
+#     # - Workspaces id
+#     # - Workspaces name
+
+#     # Get a token from Keycloak with given credential
+#     keycloak = Keycloak(
+#         base_url = os.getenv('keycloak_base_url'),
+#         realm = os.getenv('keycloak_realm'),
+#         client_id = os.getenv('keycloak_client_id'),
+#         client_secret = os.getenv('keycloak_client_secret'),
+#     )
+#     keycloak_token = keycloak.get_token()
+
+#     # Authenticate on Cosmo Tech API with Keycloak token
+#     cosmotech_api = CosmotechAPI(
+#         url = os.getenv('cosmotech_api_url'),
+#         token = keycloak_token["access_token"],
+#     )
+
+#     deployments_dict={}
+#     for organization in cosmotech_api.organizations_json():
+#         for solution in cosmotech_api.solutions_json(organization['id']):
+#             for workspace in cosmotech_api.workspaces_json(organization['id']):
+#                 workspace_id = f"{workspace['id']}"
+#                 properties = [
+#                     ("organization_id",         organization.get('id', 'n/a')),
+#                     ("workspace_id",            workspace.get('id', 'n/a')),
+#                     ("solution_id",             solution.get('id', 'n/a')),
+#                     ("organization_name",       organization.get('name', 'n/a')),
+#                     ("workspace_name",          workspace.get('name', 'n/a')),
+#                     ("solution_name",           solution.get('name', 'n/a')),
+#                     ("solution_repository",     solution.get('repository', 'n/a')),
+#                     ("solution_version",        solution.get('version', 'n/a')),
+#                     ("inventory_date",          now),
+#                 ]
+#                 deployments_dict.update(dict(properties))
+
+#         print(deployments_dict)
+
+#         # Save to JSON file of the day
+#         file_json = os.path.join(dir_today_inventory_json, workspace_id + ".json")
+#         with open(file_json, 'w') as f:
+#             json.dump(deployments_dict, f)
+#             print(f"file created: {f}")
+
+
+# Get properties of all Workspaces in a given Tenant
+def workspaces_properties(kubeconfig_file, context, dir_output, namespace):
     # Get:
     # - Organizations id
     # - Organizations name
@@ -190,46 +248,49 @@ def workspaces_properties():
     # - Workspaces id
     # - Workspaces name
 
-    # Get a token from Keycloak with given credential
-    keycloak = Keycloak(
-        base_url = os.getenv('keycloak_base_url'),
-        realm = os.getenv('keycloak_realm'),
-        client_id = os.getenv('keycloak_client_id'),
-        client_secret = os.getenv('keycloak_client_secret'),
-    )
-    keycloak_token = keycloak.get_token()
+    cluster = KubeCluster(kubeconfig_file, context)
+    if cluster.is_namespace_tenant(namespace):
 
-    # Authenticate on Cosmo Tech API with Keycloak token
-    cosmotech_api = CosmotechAPI(
-        url = os.getenv('cosmotech_api_url'),
-        token = keycloak_token["access_token"],
-    )
+        # Get Keycloak credentials from dedicated Kubernetes secret
+        keycloak_secret = cluster.get_secret_decoded(namespace, 'keycloak-babylon')
 
-    deployments_dict={}
-    for organization in cosmotech_api.organizations_json():
-        for solution in cosmotech_api.solutions_json(organization['id']):
-            for workspace in cosmotech_api.workspaces_json(organization['id']):
-                workspace_id = f"{workspace['id']}"
-                properties = [
-                    ("organization_id",         organization.get('id', 'n/a')),
-                    ("workspace_id",            workspace.get('id', 'n/a')),
-                    ("solution_id",             solution.get('id', 'n/a')),
-                    ("organization_name",       organization.get('name', 'n/a')),
-                    ("workspace_name",          workspace.get('name', 'n/a')),
-                    ("solution_name",           solution.get('name', 'n/a')),
-                    ("solution_repository",     solution.get('repository', 'n/a')),
-                    ("solution_version",        solution.get('version', 'n/a')),
-                    ("inventory_date",          now),
-                ]
-                deployments_dict.update(dict(properties))
+        # Get a token from Keycloak with given credential
+        keycloak = Keycloak(
+            base_url        = 'https://' + cluster.get_cluster_url() + '/keycloak',
+            realm           = namespace,
+            client_id       = keycloak_secret.get('client_id', ''),
+            client_secret   = keycloak_secret.get('client_secret', ''),
+        )
+        keycloak_token = keycloak.get_token()
 
-        print(deployments_dict)
+        # Authenticate on Cosmo Tech API with Keycloak token
+        cosmotech_api = CosmotechAPI(
+            url = get_cosmotech_api_url(kubeconfig_file, context, namespace),
+            token = keycloak_token["access_token"],
+        )
 
-        # Save to JSON file of the day
-        file_json = os.path.join(dir_today_inventory_json, workspace_id + ".json")
-        with open(file_json, 'w') as f:
-            json.dump(deployments_dict, f)
-            print(f"file created: {f}")
+        workspaces_dict={}
+        for organization in cosmotech_api.organizations_json():
+            for solution in cosmotech_api.solutions_json(organization['id']):
+                for workspace in cosmotech_api.workspaces_json(organization['id']):
+                    workspace_id = f"{workspace['id']}"
+                    properties = [
+                        ("tenant_name",             namespace),
+                        ("organization_id",         organization.get('id', 'n/a')),
+                        ("workspace_id",            workspace.get('id', 'n/a')),
+                        ("solution_id",             solution.get('id', 'n/a')),
+                        ("organization_name",       organization.get('name', 'n/a')),
+                        ("workspace_name",          workspace.get('name', 'n/a')),
+                        ("solution_name",           solution.get('name', 'n/a')),
+                        ("solution_repository",     solution.get('repository', 'n/a')),
+                        ("solution_version",        solution.get('version', 'n/a')),
+                        ("inventory_date",          now),
+                    ]
+                    workspaces_dict.update(dict(properties))
+
+            # Save to JSON file of the day
+            helper.create_json_file(os.path.join(dir_output, workspace_id + '.json'), workspaces_dict)
+
 
 
 # def create_all_markdown():
@@ -241,6 +302,24 @@ def workspaces_properties():
 #             with open(file_md, "w") as f:
 #                 f.write(markdown.json_to_markdown_itemvalue())
 #                 print(f"file created: {f}")
+
+
+
+# Get Cosmo Tech API URL
+def get_cosmotech_api_url(kubeconfig_file, context, namespace):
+    cluster = KubeCluster(kubeconfig_file, context)
+
+    if cluster.is_namespace_tenant(namespace):
+        for helm_release in cluster.get_namespaced_releases(namespace):
+
+            # Get the release name of the Cosmo Tech API chart
+            if 'cosmo' in helm_release and 'api' in helm_release:
+
+                # Cosmo Tech API URL
+                csm_api_path = cluster.get_helmchart_values(namespace, helm_release)['api']['version']
+                csm_api_url = f"https://{cluster.get_cluster_url()}/{namespace}/{csm_api_path}/"
+
+                return csm_api_url
 
 
 if __name__ == "__main__":
