@@ -300,16 +300,25 @@ def job():
 if __name__ == "__main__":
 
     load_dotenv()
-
     run_minutes_frequence = int(os.getenv('run_minutes_frequence', 1440)) # default is 24 hours
 
-    if run_minutes_frequence >= 30:
+    min_run_allowed = 15
+    if run_minutes_frequence >= min_run_allowed:
         schedule.every(run_minutes_frequence).minutes.do(job)
     else:
-        print(f"error: job frequence has been set as {run_minutes_frequence} but cannot be inferior as 30 minutes")
+        print(f"error: job frequence has been set as {run_minutes_frequence} but cannot be inferior as {min_run_allowed} minutes")
         exit()
 
-
+    print('inventory job started')
+    main() # launch inventory a first time
     while True:
+        # Get next job timer
+        job_time_of_next_run = schedule.next_run()
+        job_time_now = datetime.now()
+        job_time_remaining = job_time_of_next_run - job_time_now
+
+        print(f"next job will run in {job_time_remaining}")
+
         schedule.run_pending()
-        time.sleep(1)
+        time.sleep(60)
+
