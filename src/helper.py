@@ -43,3 +43,17 @@ def delete_file(file_path):
     if os.path.exists(file_path):
         os.remove(file_path)
         print(f"file deleted: {file_path}")
+
+
+# Simply append all the content of a file to another file
+def merge_files(file_to_copy, file_to_paste):
+    with open(file_to_paste, "a") as destination:
+        # Append a blank line
+        destination.write('<br>\n')
+
+        # Append content
+        with open(file_to_copy) as origin:
+            for line in origin:
+                destination.write(line)
+
+    print(f"file copied: {file_to_copy} -> {file_to_paste}")

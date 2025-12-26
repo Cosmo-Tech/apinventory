@@ -56,8 +56,11 @@ def main():
             os.makedirs(dir_cluster_md)
 
         # Create Markdown files from JSON for clusters
-        create_file_markdown_itemvalue(dir_cluster_md, os.path.join(dir_cluster, 'cluster-properties.json'), f"{cluster_name} properties")
-        create_file_markdown_helmcharts(dir_cluster_md, os.path.join(dir_cluster, 'cluster-helmcharts.json'), f"{cluster_name} cluster-wide Helm Charts")
+        create_file_markdown_itemvalue(dir_cluster_md, os.path.join(dir_cluster, 'cluster-properties.json'), f"Cluster properties")
+        create_file_markdown_helmcharts(dir_cluster_md, os.path.join(dir_cluster, 'cluster-helmcharts.json'), f"Cluster-wide Helm Charts")
+        helper.merge_files(os.path.join(dir_cluster_md, 'cluster-helmcharts.md'), os.path.join(dir_cluster_md, 'cluster-properties.md'))
+        helper.delete_file(os.path.join(dir_cluster_md, 'cluster-helmcharts.md'))
+
 
         # JSON structure of the day for tenants (which host workspaces files)
         for namespace in cluster.get_namespaces():
@@ -74,48 +77,15 @@ def main():
                     os.makedirs(dir_tenant_md)
 
                 # Create Markdown files from JSON for tenants
-                create_file_markdown_itemvalue(dir_cluster_md, os.path.join(dir_cluster, f"{namespace}-properties.json"), f"{namespace} properties")
-                create_file_markdown_helmcharts(dir_cluster_md, os.path.join(dir_cluster, f"{namespace}-helmcharts.json"), f"{namespace} Helm Charts")
+                create_file_markdown_itemvalue(dir_cluster_md, os.path.join(dir_cluster, f"{namespace}-properties.json"), f"Tenant properties")
+                create_file_markdown_helmcharts(dir_cluster_md, os.path.join(dir_cluster, f"{namespace}-helmcharts.json"), f"Tenant Helm Charts")
+                helper.merge_files(os.path.join(dir_cluster_md, f"{namespace}-helmcharts.md"), os.path.join(dir_cluster_md, f"{namespace}-properties.md"))
+                helper.delete_file(os.path.join(dir_cluster_md, f"{namespace}-helmcharts.md"))
 
                 # Create Markdown files from JSON for workspaces
                 for workspace_file in os.listdir(dir_tenant):
                     workspace_name = workspace_file.replace('.json', '')
-                    create_file_markdown_itemvalue(dir_tenant_md, os.path.join(dir_tenant, workspace_file), f"{workspace_name} properties")
-
-
-
-    for file_json in os.scandir(dir_today_inventory_json):
-        if file_json.is_file():
-            markdown = Markdown(file_json, "Temporary title of the markdown file")
-            file_md = os.path.join(dir_today_inventory_md, os.path.basename(file_json).replace("json", "md"))
-            with open(file_md, "w") as f:
-                f.write(markdown.json_to_markdown_itemvalue())
-                print(f"file created: {f}")
-
-
-        # # Structure Markdown of the day for tenants (which host workspaces files)
-        # cluster = KubeCluster(kubeconfig_file, context)
-        # for namespace in cluster.get_namespaces():
-        #     if cluster.is_namespace_tenant(namespace):
-        #         dir_tenant = os.path.join(dir_today_inventory_md, cluster.get_cluster_name(), namespace)
-        #         if not os.path.exists(dir_tenant):
-        #             os.makedirs(dir_tenant)
-
-        #         # Generate inventories
-        #         workspaces_properties(kubeconfig_file, context, dir_tenant, namespace)
-
-
-        # # Structure Markdown of the day
-        # dir_cluster    = os.path.join(dir_today_inventory_md, context)
-        # dir_tenants = os.path.join(dir_today_inventory_md, context, "namespaces")
-        # dir_workspaces = os.path.join(dir_tenants, "workspaces")
-        # for dir in [dir_cluster, dir_tenants, dir_workspaces]:
-        #     if not os.path.exists(dir):
-        #         os.makedirs(dir)
-
-
-
-    # create_all_markdown() # Create all markdown files of the day
+                    create_file_markdown_itemvalue(dir_tenant_md, os.path.join(dir_tenant, workspace_file), f"Workspace properties")
 
 
 # Get all Kubernetes contexts from a given kubeconfig file
@@ -202,6 +172,7 @@ def all_helmcharts(kubeconfig_file, context, dir_output):
     helper.merge_json_files(files_json_to_merge, os.path.join(dir_output, 'cluster-helmcharts.json'), delete_originals=True)
 
 
+# Get properties of all tenants in a cluster
 def tenants_properties(kubeconfig_file, context, dir_output):
     # Get:
     # - Tenant name
@@ -225,7 +196,7 @@ def tenants_properties(kubeconfig_file, context, dir_output):
             helper.create_json_file(os.path.join(dir_output, namespace + '-properties.json'), tenant_dict)
 
 
-# Get properties of all Workspaces in a given Tenant
+# Get properties of all Workspaces in a given tenant
 def workspaces_properties(kubeconfig_file, context, dir_output, namespace):
     # Get:
     # - Organizations id
@@ -244,7 +215,7 @@ def workspaces_properties(kubeconfig_file, context, dir_output, namespace):
         # Get Keycloak credentials from dedicated Kubernetes secret
         keycloak_secret = cluster.get_secret_decoded(namespace, 'keycloak-babylon')
 
-        # Get a token from Keycloak with given credential
+        # Get a token from Keycloak with given credentials
         keycloak = Keycloak(
             base_url        = 'https://' + cluster.get_cluster_url() + '/keycloak',
             realm           = namespace,
