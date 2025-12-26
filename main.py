@@ -4,8 +4,9 @@ import os
 import json
 import yaml # useful for kubeconfig files
 import shutil
-
-# from dotenv import load_dotenv
+import schedule
+import time
+from dotenv import load_dotenv
 
 from src.api.Kubernetes import KubeCluster
 from src.api.Keycloak import Keycloak
@@ -16,6 +17,7 @@ import src.helper as helper
 
 
 now = datetime.today().strftime('%Y-%m-%d')
+now_detailed = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
 
 dir_inventory            = "_inventory"
 dir_today_inventory      = os.path.join(dir_inventory, now)
@@ -26,8 +28,6 @@ kubeconfig_file = '_kubeconfig'
 
 
 def main():
-
-    # load_dotenv()
 
     # Prepare structure of the day
     if os.path.exists(dir_today_inventory):
@@ -291,5 +291,25 @@ def get_cosmotech_api_url(kubeconfig_file, context, namespace):
                 return csm_api_url
 
 
-if __name__ == "__main__":
+def job():
+    print(f"task started {now_detailed}")
     main()
+    print(f"task finished {now_detailed}")
+
+
+if __name__ == "__main__":
+
+    load_dotenv()
+
+    run_minutes_frequence = int(os.getenv('run_minutes_frequence', 1440)) # default is 24 hours
+
+    if run_minutes_frequence >= 30:
+        schedule.every(run_minutes_frequence).minutes.do(job)
+    else:
+        print(f"error: job frequence has been set as {run_minutes_frequence} but cannot be inferior as 30 minutes")
+        exit()
+
+
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
