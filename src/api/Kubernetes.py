@@ -178,10 +178,6 @@ class KubeCluster:
             release_name = secret_name.split('.')[4]        # Get the release name from the secret name itself
             releases_list.append(release_name)
 
-            # if 'sh.helm.release' in secret_name:
-            #     release_name = secret_name.split('.')[4]    # Get the release name from the secret name itself
-            #     releases_list.append(release_name)
-
         return releases_list
 
 

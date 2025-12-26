@@ -182,60 +182,6 @@ def tenants_properties(kubeconfig_file, context, dir_output):
             helper.create_json_file(os.path.join(dir_output, namespace + '-properties.json'), tenant_dict)
 
 
-
-# def workspaces_properties():
-#     # Get:
-#     # - Organizations id
-#     # - Organizations name
-#     # - Solutions id
-#     # - Solutions name
-#     # - Solutions repository
-#     # - Solutions version
-#     # - Workspaces id
-#     # - Workspaces name
-
-#     # Get a token from Keycloak with given credential
-#     keycloak = Keycloak(
-#         base_url = os.getenv('keycloak_base_url'),
-#         realm = os.getenv('keycloak_realm'),
-#         client_id = os.getenv('keycloak_client_id'),
-#         client_secret = os.getenv('keycloak_client_secret'),
-#     )
-#     keycloak_token = keycloak.get_token()
-
-#     # Authenticate on Cosmo Tech API with Keycloak token
-#     cosmotech_api = CosmotechAPI(
-#         url = os.getenv('cosmotech_api_url'),
-#         token = keycloak_token["access_token"],
-#     )
-
-#     deployments_dict={}
-#     for organization in cosmotech_api.organizations_json():
-#         for solution in cosmotech_api.solutions_json(organization['id']):
-#             for workspace in cosmotech_api.workspaces_json(organization['id']):
-#                 workspace_id = f"{workspace['id']}"
-#                 properties = [
-#                     ("organization_id",         organization.get('id', 'n/a')),
-#                     ("workspace_id",            workspace.get('id', 'n/a')),
-#                     ("solution_id",             solution.get('id', 'n/a')),
-#                     ("organization_name",       organization.get('name', 'n/a')),
-#                     ("workspace_name",          workspace.get('name', 'n/a')),
-#                     ("solution_name",           solution.get('name', 'n/a')),
-#                     ("solution_repository",     solution.get('repository', 'n/a')),
-#                     ("solution_version",        solution.get('version', 'n/a')),
-#                     ("inventory_date",          now),
-#                 ]
-#                 deployments_dict.update(dict(properties))
-
-#         print(deployments_dict)
-
-#         # Save to JSON file of the day
-#         file_json = os.path.join(dir_today_inventory_json, workspace_id + ".json")
-#         with open(file_json, 'w') as f:
-#             json.dump(deployments_dict, f)
-#             print(f"file created: {f}")
-
-
 # Get properties of all Workspaces in a given Tenant
 def workspaces_properties(kubeconfig_file, context, dir_output, namespace):
     # Get:
@@ -247,6 +193,7 @@ def workspaces_properties(kubeconfig_file, context, dir_output, namespace):
     # - Solutions version
     # - Workspaces id
     # - Workspaces name
+    # - Webapps url
 
     cluster = KubeCluster(kubeconfig_file, context)
     if cluster.is_namespace_tenant(namespace):
@@ -284,6 +231,7 @@ def workspaces_properties(kubeconfig_file, context, dir_output, namespace):
                         ("solution_name",           solution.get('name', 'n/a')),
                         ("solution_repository",     solution.get('repository', 'n/a')),
                         ("solution_version",        solution.get('version', 'n/a')),
+                        ("webapp_url",              "to do"),
                         ("inventory_date",          now),
                     ]
                     workspaces_dict.update(dict(properties))

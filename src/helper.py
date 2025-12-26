@@ -1,6 +1,7 @@
 import os
 import json
 
+
 # Create a JSON file
 # Tips: content is well working with dict type
 def create_json_file(file_path, content):
@@ -37,6 +38,7 @@ def rename_file(file_path, file_name_new):
     print(f"file renamed: {file_path} -> {file_name_new}")
 
 
+# Simply delete a file
 def delete_file(file_path):
     if os.path.exists(file_path):
         os.remove(file_path)

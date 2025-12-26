@@ -15,9 +15,13 @@ Inventory of the day is stored in a dedicated directory and is available in mark
 ### Get Kubernetes clusters contexts
 > This program uses a dedicated file `_kubeconfig` file instead of the default $USER/.kube/config file.
 * Get contexts
-	* AKS
+	* Azure AKS
 		```
 		az aks get-credentials --resource-group CLUSTER_RESOURCE_GROUP --name CLUSTER_NAME --file _kubeconfig
+		```
+	* AWS EKS
+		```
+		sh -c 'aws eks update-kubeconfig --name $0 --alias $0 --kubeconfig _kubeconfig' CLUSTER_NAME
 		```
 
 ### Run from source
@@ -106,71 +110,6 @@ Inventory of the day is stored in a dedicated directory and is available in mark
 | solution_version     | *version*    |
 | webapp_url           | *url*        |
 | inventory_date       | *date*       |
-
-## Developers
-Must be able to read any API, and we filter what we need
-
-Needs:
-- Github API (Terraform repositories tags)
-- Kubernetes API (cluster name, namespaces)
-	- seamless Kubernetes API with contexg+kubectl ?
-	OR
-	- Azure API for AKS infos ?
-	- AWS API for EKS infos ?
-	- GCP API for GKE infos ?
-- Cosmo Tech API (org, solution, workspaces)
-
-Goal:
-- Terraform modules
-	- cluster 
-		- type (AKS, EKS, GKE, KOB)
-		- version
-	- common
-		- version
-		- list components (keycloak, velero, vault, grafana etc)
-	- tenant
-		- version
-		- list components (api, redis, argo, psql, seaweedfs etc)
-
-- Kubernetes cluster
-	- cluster name
-	- version
-	- public IP
-	- region
-	- provider infos
-			- AWS
-				- Account ID
-				- Resource Group name
-				- VPC ID
-			- Azure
-				- Subscription ID
-				- Resource Group name
-				- Virtual network ID
-			- GCP
-				- Organization ID
-				- Project ID
-				- VPC ID
-
-
-- Cosmo Tech tenants
-	- namespaces
-		- name
-		- charts (webapp, api etc...)
-		- security list ?
-
-- Cosmo Tech API
-	- organizations
-		- name
-		- ACL
-	- solutions
-		- name
-		- ACL
-		- simulator version
-	- workspaces
-		- name
-		- ACL
-		- superset dashboard id ?
-		- superset reports id ?
 
 <br>
 <br>
