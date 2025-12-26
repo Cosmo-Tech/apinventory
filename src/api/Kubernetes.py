@@ -84,18 +84,15 @@ class KubeCluster:
         secrets = self.client_CoreV1Api.list_namespaced_secret(
             namespace = namespace,
             label_selector = 'status=deployed',           # Get only the latest revision
-            field_selector = 'type=helm.sh/release.v1',   # Get only Helm secrets that contains the releases
+            field_selector = 'type=helm.sh/release.v1',   # Get only secrets that contains the Helm releases
             )
 
         for secret in secrets.items:
             if not secret.data or 'release' not in secret.data:
                 continue
 
-            k8s_decoded = base64.b64decode(secret.data['release'])  # Get the secret in base64
-            helm_decoded = base64.b64decode(k8s_decoded)            # Helm also encode the release
-            unzipped = gzip.decompress(helm_decoded)                # And finally, Helm is compressing the release
-            release_data = json.loads(unzipped)
-            
+            release_data = self.decode_helmchart_secret(secret.data['release'])
+
             if release_data:
                 chart_meta = release_data.get('chart', {}).get('metadata', {})
                 chart_info = {
@@ -110,3 +107,77 @@ class KubeCluster:
             helmcharts_list.append(helmchart_object)
 
         return helmcharts_list
+
+
+    # A namespace is a tenant if it contains a Cosmo Tech API
+    def is_namespace_tenant(self, namespace):
+        is_tenant = False
+
+        for pod in self.client_CoreV1Api.list_namespaced_pod(namespace).items:
+            for container in pod.spec.containers:
+                container_dict = container.to_dict()
+
+                # Get the value from the deployed image (because it's the most stable information we can rely on)
+                image = container_dict.get('image')
+                if 'cosmo-tech/cosmotech-api' in image:
+                    is_tenant = True
+
+        return is_tenant
+
+
+    # Decode Helm Chart release from its secret
+    def decode_helmchart_secret(self, secret_to_decode):
+        secret_decoded = base64.b64decode(secret_to_decode)     # Get the secret from base64
+        helm_decoded = base64.b64decode(secret_decoded)         # Helm also encode the release in base64
+        unzipped = gzip.decompress(helm_decoded)                # And finally, Helm is compressing the release
+        release_data = json.loads(unzipped)
+
+        return release_data
+
+
+    # Get values from a deployed Helm Chart
+    def get_helmchart_values(self, namespace, helmchart):
+        secrets = self.client_CoreV1Api.list_namespaced_secret(
+            namespace = namespace,
+            label_selector = f'status=deployed, name={helmchart}',  # Get only the latest revision
+            field_selector = f'type=helm.sh/release.v1',            # Get only secrets that contains the Helm releases
+            )
+
+        for secret in secrets.items:
+            if not secret.data or 'release' not in secret.data:
+                continue
+
+            release_data = self.decode_helmchart_secret(secret.data['release'])
+            if release_data:
+                chart_meta = release_data.get('config')             # 'config' correspond to configured values of the chart in the release
+
+        return chart_meta
+
+
+    # # Get all pods from a given namespace
+    # def get_namespaced_pods(self, namespace):
+    #     pods_list = []
+    #     for pod in self.client_CoreV1Api.list_namespaced_pod(namespace).items:
+    #         pods_list.append(pod.metadata.name)
+ 
+    #     return pods_list
+
+
+    # Get all Helm releases from a given namespace
+    # Get them from the Helm secrets
+    def get_namespaced_releases(self, namespace):
+        secrets = self.client_CoreV1Api.list_namespaced_secret(
+            namespace = namespace,
+            label_selector = f'status=deployed',            # Get only the latest revision
+            field_selector = f'type=helm.sh/release.v1',    # Get only secrets that contains the Helm releases
+            )
+
+        releases_list = []
+        for secret in secrets.items:
+
+            secret_name = secret.metadata.name
+            if 'sh.helm.release' in secret_name:
+                release_name = secret_name.split('.')[4]    # Get the release name from the secret name itself
+                releases_list.append(release_name)
+
+        return releases_list
