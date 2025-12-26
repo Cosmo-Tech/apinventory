@@ -22,7 +22,7 @@ now_detailed = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
 dir_inventory            = "_inventory"
 dir_today_inventory      = os.path.join(dir_inventory, now)
 dir_today_inventory_json = os.path.join(dir_today_inventory, "json")
-dir_today_inventory_md   = os.path.join(dir_today_inventory, "md")
+dir_today_inventory_md   = os.path.join(dir_inventory, "markdown")
 
 kubeconfig_file = '_kubeconfig'
 
