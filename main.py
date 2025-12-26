@@ -2,7 +2,6 @@
 from datetime import datetime
 import os
 import json
-import jsonschema_markdown
 import yaml # useful for kubeconfig files
 import shutil
 
@@ -38,8 +37,11 @@ def main():
             os.makedirs(dir)
 
     for context in get_all_contexts(kubeconfig_file):
-        # Structure JSON of the day for clusters
-        dir_cluster = os.path.join(dir_today_inventory_json, context)
+        cluster = KubeCluster(kubeconfig_file, context)
+        cluster_name = cluster.get_cluster_name()
+
+        # JSON structure of the day for clusters
+        dir_cluster = os.path.join(dir_today_inventory_json, cluster_name)
         if not os.path.exists(dir_cluster):
             os.makedirs(dir_cluster)
 
@@ -48,18 +50,59 @@ def main():
         all_helmcharts(kubeconfig_file, context, dir_cluster)
         tenants_properties(kubeconfig_file, context, dir_cluster)
 
+        # Markdown structure of the day for clusters
+        dir_cluster_md = os.path.join(dir_today_inventory_md, cluster_name)
+        if not os.path.exists(dir_cluster_md):
+            os.makedirs(dir_cluster_md)
 
-        # Structure JSON of the day for tenants (which host workspaces files)
-        cluster = KubeCluster(kubeconfig_file, context)
+        # Create Markdown files from JSON for clusters
+        create_file_markdown_itemvalue(dir_cluster_md, os.path.join(dir_cluster, 'cluster-properties.json'), f"{cluster_name} properties")
+        create_file_markdown_helmcharts(dir_cluster_md, os.path.join(dir_cluster, 'cluster-helmcharts.json'), f"{cluster_name} cluster-wide Helm Charts")
+
+        # JSON structure of the day for tenants (which host workspaces files)
         for namespace in cluster.get_namespaces():
             if cluster.is_namespace_tenant(namespace):
-                dir_tenant = os.path.join(dir_today_inventory_json, cluster.get_cluster_name(), namespace)
+                dir_tenant = os.path.join(dir_today_inventory_json, cluster_name, namespace)
                 if not os.path.exists(dir_tenant):
                     os.makedirs(dir_tenant)
 
                 # Generate inventories
                 workspaces_properties(kubeconfig_file, context, dir_tenant, namespace)
 
+                dir_tenant_md = os.path.join(dir_today_inventory_md, cluster_name, namespace)
+                if not os.path.exists(dir_tenant_md):
+                    os.makedirs(dir_tenant_md)
+
+                # Create Markdown files from JSON for tenants
+                create_file_markdown_itemvalue(dir_cluster_md, os.path.join(dir_cluster, f"{namespace}-properties.json"), f"{namespace} properties")
+                create_file_markdown_helmcharts(dir_cluster_md, os.path.join(dir_cluster, f"{namespace}-helmcharts.json"), f"{namespace} Helm Charts")
+
+                # Create Markdown files from JSON for workspaces
+                for workspace_file in os.listdir(dir_tenant):
+                    workspace_name = workspace_file.replace('.json', '')
+                    create_file_markdown_itemvalue(dir_tenant_md, os.path.join(dir_tenant, workspace_file), f"{workspace_name} properties")
+
+
+
+    for file_json in os.scandir(dir_today_inventory_json):
+        if file_json.is_file():
+            markdown = Markdown(file_json, "Temporary title of the markdown file")
+            file_md = os.path.join(dir_today_inventory_md, os.path.basename(file_json).replace("json", "md"))
+            with open(file_md, "w") as f:
+                f.write(markdown.json_to_markdown_itemvalue())
+                print(f"file created: {f}")
+
+
+        # # Structure Markdown of the day for tenants (which host workspaces files)
+        # cluster = KubeCluster(kubeconfig_file, context)
+        # for namespace in cluster.get_namespaces():
+        #     if cluster.is_namespace_tenant(namespace):
+        #         dir_tenant = os.path.join(dir_today_inventory_md, cluster.get_cluster_name(), namespace)
+        #         if not os.path.exists(dir_tenant):
+        #             os.makedirs(dir_tenant)
+
+        #         # Generate inventories
+        #         workspaces_properties(kubeconfig_file, context, dir_tenant, namespace)
 
 
         # # Structure Markdown of the day
@@ -240,17 +283,24 @@ def workspaces_properties(kubeconfig_file, context, dir_output, namespace):
             helper.create_json_file(os.path.join(dir_output, workspace_id + '.json'), workspaces_dict)
 
 
+# Create Markdown file containing a simple key/value table
+def create_file_markdown_itemvalue(destination_dir, file_json, title):
+    if os.path.exists(file_json):
+        markdown = Markdown(file_json, title)
+        file_md = os.path.join(destination_dir, os.path.basename(file_json).replace("json", "md"))
+        with open(file_md, "w") as f:
+            f.write(markdown.json_to_markdown_itemvalue())
+            print(f"file created: {file_md}")
 
-# def create_all_markdown():
-#     print("creating markdown files...")
-#     for file_json in os.scandir(dir_today_inventory_json):  
-#         if file_json.is_file():
-#             markdown = Markdown(file_json, "Temporary title of the markdown file")
-#             file_md = os.path.join(dir_today_inventory_md, os.path.basename(file_json).replace("json", "md"))
-#             with open(file_md, "w") as f:
-#                 f.write(markdown.json_to_markdown_itemvalue())
-#                 print(f"file created: {f}")
 
+# Create Markdown file containing Helm Charts informations table
+def create_file_markdown_helmcharts(destination_dir, file_json, title):
+    if os.path.exists(file_json):
+        markdown = Markdown(file_json, title)
+        file_md = os.path.join(destination_dir, os.path.basename(file_json).replace("json", "md"))
+        with open(file_md, "w") as f:
+            f.write(markdown.json_to_markdown_helmchart())
+            print(f"file created: {file_md}")
 
 
 # Get Cosmo Tech API URL
