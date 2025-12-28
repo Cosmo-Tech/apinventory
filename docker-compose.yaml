@@ -4,6 +4,7 @@ services:
     build: .
     # image: ghcr.io/cosmo-tech/apiventory:latest
     restart: unless-stopped
+    env_file: ".env"
     volumes:
-      - ./inventory:/apiventory/_inventory/docker/
-      - ./_env:/apiventory/.env
+      - ./_inventory_from_docker:/apiventory/_inventory/
+      - ${PWD}/_kubeconfig:/apiventory/_kubeconfig

@@ -9,4 +9,4 @@ COPY src /apiventory/src
 
 RUN pip install -r requirements.txt
 
-CMD ["python", "-m", "main"]
+CMD ["python", "-u", "-m", "main", "--job"]

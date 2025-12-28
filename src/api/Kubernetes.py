@@ -20,7 +20,7 @@ class KubeCluster:
 
 
     # Get info from current loaded context
-    # Trick here is to get from the cluster URL that is already getted from this class 
+    # Trick here is to get from the cluster URL that is already getted from this class
     def get_cluster_name(self):
         try:
             name = self.get_cluster_url().split(".")[0]
