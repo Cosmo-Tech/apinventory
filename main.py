@@ -1,11 +1,12 @@
 
-from datetime import datetime
 import os
+import sys
+import shutil
 import json
 import yaml # useful for kubeconfig files
-import shutil
-import schedule
 import time
+import schedule
+from datetime import datetime
 from dotenv import load_dotenv
 
 from src.api.Kubernetes import KubeCluster
@@ -16,6 +17,8 @@ from src.views.Markdown import Markdown
 import src.helper as helper
 
 
+load_dotenv()
+
 now = datetime.today().strftime('%Y-%m-%d')
 now_detailed = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
 
@@ -24,7 +27,7 @@ dir_today_inventory      = os.path.join(dir_inventory, now)
 dir_today_inventory_json = os.path.join(dir_today_inventory, "json")
 dir_today_inventory_md   = os.path.join(dir_inventory, "markdown")
 
-kubeconfig_file = '_kubeconfig'
+kubeconfig_file = str(os.getenv('APINV_KUBECONFIG_PATH'))
 
 
 def main():
@@ -291,34 +294,67 @@ def get_cosmotech_api_url(kubeconfig_file, context, namespace):
                 return csm_api_url
 
 
+def help():
+    text = """
+Automatic inventory of Cosmo Tech platforms
+
+Usage: python -m main [OPTION]
+
+    --once      run a single inventory
+    --job       run job based inventories (every APINV_RUN_FREQUENCY minutes)
+-h, --help      display this help message
+"""
+    print(text)
+
+
 def job():
-    print(f"task started {now_detailed}")
+    print(f"job started {now_detailed}")
     main()
-    print(f"task finished {now_detailed}")
+    print(f"job finished {now_detailed}")
 
 
 if __name__ == "__main__":
 
-    load_dotenv()
-    run_minutes_frequence = int(os.getenv('run_minutes_frequence', 1440)) # default is 24 hours
 
-    min_run_allowed = 15
-    if run_minutes_frequence >= min_run_allowed:
-        schedule.every(run_minutes_frequence).minutes.do(job)
-    else:
-        print(f"error: job frequence has been set as {run_minutes_frequence} but cannot be inferior as {min_run_allowed} minutes")
-        exit()
+    # Ensure an argument is provided
+    try:
+        option = sys.argv[1]
+    except:
+        option = ''
+        print("missing operand\nTry with '--help' for more information.")
 
-    print('inventory job started')
-    main() # launch inventory a first time
-    while True:
-        # Get next job timer
-        job_time_of_next_run = schedule.next_run()
-        job_time_now = datetime.now()
-        job_time_remaining = job_time_of_next_run - job_time_now
 
-        print(f"next job will run in {job_time_remaining}")
+    # Run a single inventory
+    if option in ['--once']:
+        main()
 
-        schedule.run_pending()
-        time.sleep(60)
+    # Run job based inventories
+    elif option in ['--job']:
+        APINV_RUN_FREQUENCY = int(os.getenv('APINV_RUN_FREQUENCY', 1440)) # default is 24 hours
+        min_run_allowed = 10
+
+        if APINV_RUN_FREQUENCY >= min_run_allowed:
+            schedule.every(APINV_RUN_FREQUENCY).minutes.do(job)
+        else:
+            print(f"error: job frequency has been set as {APINV_RUN_FREQUENCY} but cannot be inferior as {min_run_allowed} minutes")
+            exit()
+
+        print('inventory job started')
+
+        # launch inventory a first time
+        main()
+
+        while True:
+            # Get next job timer
+            job_time_of_next_run = schedule.next_run()
+            job_time_now = datetime.now()
+            job_time_remaining = job_time_of_next_run - job_time_now
+
+            print(f"next job will run in {job_time_remaining}")
+
+            schedule.run_pending()
+            time.sleep(10)
+
+    elif option in ['-h','--help']:
+        help()
 
