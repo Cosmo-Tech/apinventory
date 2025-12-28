@@ -39,8 +39,20 @@ def main():
         if not os.path.exists(dir):
             os.makedirs(dir)
 
+
+    # Ensure cluster is reachable to avoid killing program
+    available_clusters = []
     for context in get_all_contexts(kubeconfig_file):
         cluster = KubeCluster(kubeconfig_file, context)
+        try:
+            # If the version is returned, it mean the cluster is up (and if not, it means the cluster is down or not reachable)
+            cluster.get_cluster_version()
+            available_clusters.append(cluster)
+        except:
+            print(f"error: failed to connect to context '{context}'. Is cluster down ?")
+
+
+    for cluster in available_clusters:
         cluster_name = cluster.get_cluster_name()
 
         # JSON structure of the day for clusters
@@ -49,9 +61,9 @@ def main():
             os.makedirs(dir_cluster)
 
         # Generate inventories
-        cluster_properties(kubeconfig_file, context, dir_cluster)
-        all_helmcharts(kubeconfig_file, context, dir_cluster)
-        tenants_properties(kubeconfig_file, context, dir_cluster)
+        cluster_properties(cluster, dir_cluster)
+        all_helmcharts(cluster, dir_cluster)
+        tenants_properties(cluster, dir_cluster)
 
         # Markdown structure of the day for clusters
         dir_cluster_md = os.path.join(dir_today_inventory_md, cluster_name)
@@ -73,7 +85,7 @@ def main():
                     os.makedirs(dir_tenant)
 
                 # Generate inventories
-                workspaces_properties(kubeconfig_file, context, dir_tenant, namespace)
+                workspaces_properties(cluster, dir_tenant, namespace)
 
                 dir_tenant_md = os.path.join(dir_today_inventory_md, cluster_name, namespace)
                 if not os.path.exists(dir_tenant_md):
@@ -106,13 +118,12 @@ def get_all_contexts(kubeconfig_file):
 
 
 # Save cluster properties in a file
-def cluster_properties(kubeconfig_file, context, dir_output):
+def cluster_properties(cluster, dir_output):
     # Get:
     # - Cluster name
     # - Cluster region
     # - Cluster version
 
-    cluster = KubeCluster(kubeconfig_file, context)
     name    = cluster.get_cluster_name()
     region  = cluster.get_cluster_region()
     version = cluster.get_cluster_version()
@@ -138,7 +149,7 @@ def cluster_properties(kubeconfig_file, context, dir_output):
 # Save all Helm Charts
 # - one file for cluster-wide
 # - one file for each tenants
-def all_helmcharts(kubeconfig_file, context, dir_output):
+def all_helmcharts(cluster, dir_output):
     # Get:
     # - Cluster-wide Helm Charts names
     # - Cluster-wide Helm Charts versions
@@ -147,7 +158,6 @@ def all_helmcharts(kubeconfig_file, context, dir_output):
     # - Tenant Helm Charts versions
     # - Tenant Helm Charts App versions
 
-    cluster = KubeCluster(kubeconfig_file, context)
     files_json_to_merge = []
     helmcharts_dict = {}
 
@@ -176,13 +186,12 @@ def all_helmcharts(kubeconfig_file, context, dir_output):
 
 
 # Get properties of all tenants in a cluster
-def tenants_properties(kubeconfig_file, context, dir_output):
+def tenants_properties(cluster, dir_output):
     # Get:
     # - Tenant name
     # - Cosmo Tech API Swagger URL
 
     tenant_dict = {}
-    cluster = KubeCluster(kubeconfig_file, context)
 
     namespaces = cluster.get_namespaces()
     for namespace in namespaces:
@@ -190,7 +199,7 @@ def tenants_properties(kubeconfig_file, context, dir_output):
 
             properties = [
                 ("tenant_name",     namespace),
-                ("swagger_url",     get_cosmotech_api_url(kubeconfig_file, context, namespace)),
+                ("swagger_url",     get_cosmotech_api_url(cluster, namespace)),
                 ("inventory_date",  now),
             ]
             tenant_dict.update(dict(properties))
@@ -200,7 +209,7 @@ def tenants_properties(kubeconfig_file, context, dir_output):
 
 
 # Get properties of all Workspaces in a given tenant
-def workspaces_properties(kubeconfig_file, context, dir_output, namespace):
+def workspaces_properties(cluster, dir_output, namespace):
     # Get:
     # - Organizations id
     # - Organizations name
@@ -212,7 +221,7 @@ def workspaces_properties(kubeconfig_file, context, dir_output, namespace):
     # - Workspaces name
     # - Webapps url
 
-    cluster = KubeCluster(kubeconfig_file, context)
+
     if cluster.is_namespace_tenant(namespace):
 
         # Get Keycloak credentials from dedicated Kubernetes secret
@@ -229,7 +238,7 @@ def workspaces_properties(kubeconfig_file, context, dir_output, namespace):
 
         # Authenticate on Cosmo Tech API with Keycloak token
         cosmotech_api = CosmotechAPI(
-            url = get_cosmotech_api_url(kubeconfig_file, context, namespace),
+            url = get_cosmotech_api_url(cluster, namespace),
             token = keycloak_token["access_token"],
         )
 
@@ -278,9 +287,7 @@ def create_file_markdown_helmcharts(destination_dir, file_json, title):
 
 
 # Get Cosmo Tech API URL
-def get_cosmotech_api_url(kubeconfig_file, context, namespace):
-    cluster = KubeCluster(kubeconfig_file, context)
-
+def get_cosmotech_api_url(cluster, namespace):
     if cluster.is_namespace_tenant(namespace):
         for helm_release in cluster.get_namespaced_releases(namespace):
 

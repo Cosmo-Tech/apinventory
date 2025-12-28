@@ -12,14 +12,15 @@ class KubeCluster:
         try:
             config.load_kube_config(kubeconfig_file, context)
         except:
-            print("error: failed to load context '" + context + "' from file" + kubeconfig_file)
+            print(f"error: failed to load context '{context}' from file {kubeconfig_file}")
+
         self.client_CoreV1Api = client.CoreV1Api()
         self.client_VersionApi = client.VersionApi()
         self.client_NetworkingV1Api = client.NetworkingV1Api()
 
 
     # Get info from current loaded context
-    # Trick here is to get from the cluster URL that is already getted in this class 
+    # Trick here is to get from the cluster URL that is already getted from this class 
     def get_cluster_name(self):
         try:
             name = self.get_cluster_url().split(".")[0]
