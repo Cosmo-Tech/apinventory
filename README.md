@@ -1,4 +1,4 @@
-# Cosmo Tech automatic deployments inventory
+# Automatic inventory of Cosmo Tech platforms
 
 This program intends to list existing deployments of Cosmo Tech tenants.
 
@@ -13,7 +13,8 @@ Inventory of the day is stored in a dedicated directory and is available in mark
 
 ## How to
 ### Get Kubernetes clusters contexts
-> This program uses a dedicated file `_kubeconfig` file instead of the default $USER/.kube/config file.
+> This program uses a dedicated file instead of the default `$USER/.kube/config` file. \
+> It can be configured in `.env` file (configured as `_kubeconfig` in `.env.example`)
 * Get contexts
 	* Azure AKS
 		```
