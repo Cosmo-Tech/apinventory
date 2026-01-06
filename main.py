@@ -220,7 +220,10 @@ def tenants_properties(cluster, dir_output):
             cosmotech_api_version = cluster.get_cosmotech_api_version(namespace)
             platform_version = cosmotech_api_version.split('.')[0]
             if int(platform_version) < 5:
-                azure = Azure(cluster.get_azure_subcription_id())
+                azure_subcription_id = cluster.get_azure_subcription_id()
+                azure = Azure(azure_subcription_id)
+
+                tenant_dict.update(dict([('Azure Subscription ID', azure_subcription_id)]))
 
                 rg = azure.get_resource_group_from_storage_name(cluster.get_cosmotech_api_storage_account(namespace))
                 rg_ressources = azure.get_resource_group_resources(rg)
@@ -381,7 +384,7 @@ if __name__ == "__main__":
         option = sys.argv[1]
     except:
         option = ''
-        print("missing operand\nTry with '--help' for more information.")
+        print("[apinventory] missing operand\nTry with '--help' for more information.")
 
     # Run a single inventory
     if option in ['--once']:
