@@ -1,8 +1,8 @@
 
 services:
   apiventory:
-    build: .
-    # image: ghcr.io/cosmo-tech/apiventory:latest
+    # build: .
+    image: ghcr.io/cosmo-tech/apinventory:latest
     restart: unless-stopped
     env_file: ".env"
     volumes:

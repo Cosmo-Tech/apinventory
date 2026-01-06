@@ -93,7 +93,6 @@ class KubeCluster:
                 continue
 
             release_data = self.decode_helmchart_secret(secret.data['release'])
-
             if release_data:
                 chart_meta = release_data.get('chart', {}).get('metadata', {})
                 chart_info = {
@@ -126,47 +125,17 @@ class KubeCluster:
         return is_tenant
 
 
-    # Decode Helm Chart release from its secret
-    def decode_helmchart_secret(self, secret_to_decode):
-        secret_decoded = base64.b64decode(secret_to_decode)     # Get the secret from base64
-        helm_decoded = base64.b64decode(secret_decoded)         # Helm also encode the release in base64
-        unzipped = gzip.decompress(helm_decoded)                # And finally, Helm is compressing the release
-        release_data = json.loads(unzipped)
-
-        return release_data
-
-
-    # Get values from a deployed Helm Chart
-    def get_helmchart_values(self, namespace, helmchart):
-        secrets = self.client_CoreV1Api.list_namespaced_secret(
-            namespace = namespace,
-            label_selector = f'status=deployed, name={helmchart}',  # Get only the latest revision
-            field_selector = f'type=helm.sh/release.v1',            # Get only secrets that contains the Helm releases
-            )
-
-        for secret in secrets.items:
-            if not secret.data or 'release' not in secret.data:
-                continue
-
-            release_data = self.decode_helmchart_secret(secret.data['release'])
-            if release_data:
-                chart_meta = release_data.get('config')             # 'config' correspond to configured values of the chart in the release
-
-        return chart_meta
-
-
     # # Get all pods from a given namespace
     # def get_namespaced_pods(self, namespace):
     #     pods_list = []
     #     for pod in self.client_CoreV1Api.list_namespaced_pod(namespace).items:
     #         pods_list.append(pod.metadata.name)
- 
     #     return pods_list
 
 
     # Get all Helm releases from a given namespace
     # Get them from the Helm secrets
-    def get_namespaced_releases(self, namespace):
+    def get_helmchart_releases_list(self, namespace):
         secrets = self.client_CoreV1Api.list_namespaced_secret(
             namespace = namespace,
             label_selector = f'status=deployed',            # Get only the latest revision
@@ -182,16 +151,92 @@ class KubeCluster:
         return releases_list
 
 
-    # Get and decode a given secret from Kubernetes
-    def get_secret_decoded(self, namespace, secret_name):
-        secret = self.client_CoreV1Api.read_namespaced_secret(
+    # Decode Helm Chart release from its secret
+    def decode_helmchart_secret(self, secret_to_decode):
+        secret_decoded = base64.b64decode(secret_to_decode)     # Get the secret from base64
+        helm_decoded = base64.b64decode(secret_decoded)         # Helm also encode the release in base64
+        unzipped = gzip.decompress(helm_decoded)                # And finally, Helm is compressing the release
+        release_data = json.loads(unzipped)
+
+        return release_data
+
+    # Get a deployed Helm Chart release
+    def get_helmchart_release(self, namespace, helmchart):
+        secrets = self.client_CoreV1Api.list_namespaced_secret(
             namespace = namespace,
-            name = secret_name,
+            label_selector = f'status=deployed, name={helmchart}',  # Get only the latest revision
+            field_selector = f'type=helm.sh/release.v1',            # Get only secrets that contains the Helm releases
             )
 
-        utf8_decoded = {}
-        for key, value in secret.data.items():
-            base64_decoded = base64.b64decode(value)
-            utf8_decoded[key] = base64_decoded.decode('utf-8')
+        for secret in secrets.items:
+            if not secret.data or 'release' not in secret.data:
+                continue
 
-        return utf8_decoded
+            release_data = self.decode_helmchart_secret(secret.data['release'])
+            if release_data:
+                chart_meta = release_data
+
+        return chart_meta
+
+
+    # Get values from a deployed Helm Chart release
+    def get_helmchart_values(self, namespace, helmchart):
+        release = self.get_helmchart_release(namespace, helmchart)
+        values = release.get('config') # 'config' correspond to configured values of the chart in the release
+
+        return values
+
+
+    # Get and decode a given secret from Kubernetes
+    def get_secret_decoded(self, namespace, secret_name):
+        try:
+            secret = self.client_CoreV1Api.read_namespaced_secret(
+                namespace = namespace,
+                name = secret_name,
+                )
+
+            utf8_decoded = {}
+            for key, value in secret.data.items():
+                base64_decoded = base64.b64decode(value)
+                utf8_decoded[key] = base64_decoded.decode('utf-8')
+
+            return utf8_decoded
+        except:
+            return ''
+
+
+    # Get Azure subscription ID from a Kubernetes node (AKS)
+    def get_azure_subcription_id(self):
+        # Get all nodes to be sure having the information
+        nodes = self.client_CoreV1Api.list_node()
+        for node in nodes.items:
+            try:
+                subscription_id = (node.spec.provider_id).split('/')[4]
+            except:
+                subscription_id = 'n/a'
+        return subscription_id
+
+
+    # Get Cosmo Tech API version from its Helm Chart release
+    def get_cosmotech_api_helmchart(self, namespace):
+        for helm_release in self.get_helmchart_releases_list(namespace):
+
+            # Get the release name of the Cosmo Tech API chart
+            if 'cosmo' in helm_release and 'api' in helm_release:
+                return helm_release
+
+
+    # Get Cosmo Tech API URL
+    def get_cosmotech_api_url(self, namespace):
+        api_helm_release = self.get_cosmotech_api_helmchart(namespace)
+        api_path = self.get_helmchart_values(namespace, api_helm_release)['api']['version']
+        api_url = f"https://{self.get_cluster_url()}/{namespace}/{api_path}/"
+        return api_url
+
+
+    # Get Cosmo Tech API version from its Helm Chart release
+    def get_cosmotech_api_version(self, namespace):
+        api_helm_release_name = self.get_cosmotech_api_helmchart(namespace)
+        api_helm_release_data = self.get_helmchart_release(namespace, api_helm_release_name)
+        api_version = api_helm_release_data.get('chart').get('metadata').get('appVersion')
+        return api_version

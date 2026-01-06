@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 
 from src.api.Kubernetes import KubeCluster
 from src.api.Keycloak import Keycloak
+from src.api.Azure import Azure
 from src.api.Cosmotech import CosmotechAPI
 from src.views.Markdown import Markdown
 
@@ -19,13 +20,12 @@ import src.helper as helper
 
 load_dotenv()
 
-now = datetime.today().strftime('%Y-%m-%d')
-now_detailed = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
+today = datetime.today().strftime('%Y-%m-%d')
 
 dir_inventory            = "_inventory"
-dir_today_inventory      = os.path.join(dir_inventory, now)
+dir_today_inventory      = os.path.join(dir_inventory, today)
 dir_today_inventory_json = os.path.join(dir_today_inventory, "json")
-dir_today_inventory_md   = os.path.join(dir_inventory, "markdown")
+dir_inventory_md   = os.path.join(dir_inventory, "markdown")
 
 kubeconfig_file = str(os.getenv('APINV_KUBECONFIG_PATH'))
 
@@ -33,11 +33,12 @@ kubeconfig_file = str(os.getenv('APINV_KUBECONFIG_PATH'))
 def main():
 
     # Prepare structure of the day
-    if os.path.exists(dir_today_inventory):
-        shutil.rmtree(dir_today_inventory)
-    for dir in [dir_inventory, dir_today_inventory, dir_today_inventory_json, dir_today_inventory_md]:
-        if not os.path.exists(dir):
-            os.makedirs(dir)
+    for dir_to_delete in [dir_today_inventory, dir_inventory_md]:
+        if os.path.exists(dir_to_delete):
+            shutil.rmtree(dir_to_delete)
+    for dir_to_create in [dir_inventory, dir_today_inventory, dir_today_inventory_json, dir_inventory_md]:
+        if not os.path.exists(dir_to_create):
+            os.makedirs(dir_to_create)
 
 
     # Ensure cluster is reachable to avoid killing program
@@ -53,6 +54,14 @@ def main():
 
 
     for cluster in available_clusters:
+
+        # azure = Azure(cluster.get_azure_subcription_id())
+        # print(cluster.get_cluster_name(), cluster.get_azure_subcription_id())
+        # # print(azure)
+        # print(azure.get_token())
+
+
+
         cluster_name = cluster.get_cluster_name()
 
         # JSON structure of the day for clusters
@@ -66,7 +75,7 @@ def main():
         tenants_properties(cluster, dir_cluster)
 
         # Markdown structure of the day for clusters
-        dir_cluster_md = os.path.join(dir_today_inventory_md, cluster_name)
+        dir_cluster_md = os.path.join(dir_inventory_md, cluster_name)
         if not os.path.exists(dir_cluster_md):
             os.makedirs(dir_cluster_md)
 
@@ -76,7 +85,6 @@ def main():
         helper.merge_files(os.path.join(dir_cluster_md, 'cluster-helmcharts.md'), os.path.join(dir_cluster_md, 'cluster-properties.md'))
         helper.delete_file(os.path.join(dir_cluster_md, 'cluster-helmcharts.md'))
 
-
         # JSON structure of the day for tenants (which host workspaces files)
         for namespace in cluster.get_namespaces():
             if cluster.is_namespace_tenant(namespace):
@@ -84,23 +92,35 @@ def main():
                 if not os.path.exists(dir_tenant):
                     os.makedirs(dir_tenant)
 
-                # Generate inventories
-                workspaces_properties(cluster, dir_tenant, namespace)
-
-                dir_tenant_md = os.path.join(dir_today_inventory_md, cluster_name, namespace)
+                dir_tenant_md = os.path.join(dir_inventory_md, cluster_name, namespace)
                 if not os.path.exists(dir_tenant_md):
                     os.makedirs(dir_tenant_md)
 
-                # Create Markdown files from JSON for tenants
-                create_file_markdown_itemvalue(dir_cluster_md, os.path.join(dir_cluster, f"{namespace}-properties.json"), f"Tenant properties")
-                create_file_markdown_helmcharts(dir_cluster_md, os.path.join(dir_cluster, f"{namespace}-helmcharts.json"), f"Tenant Helm Charts")
-                helper.merge_files(os.path.join(dir_cluster_md, f"{namespace}-helmcharts.md"), os.path.join(dir_cluster_md, f"{namespace}-properties.md"))
-                helper.delete_file(os.path.join(dir_cluster_md, f"{namespace}-helmcharts.md"))
+                # Tenants Markdown
+                try:
+                    # Properties
+                    create_file_markdown_itemvalue(dir_cluster_md, os.path.join(dir_cluster, f"{namespace}-properties.json"), f"Tenant properties")
+                    try:
+                        # Helmcharts
+                        create_file_markdown_helmcharts(dir_cluster_md, os.path.join(dir_cluster, f"{namespace}-helmcharts.json"), f"Tenant Helm Charts")
+                        helper.merge_files(os.path.join(dir_cluster_md, f"{namespace}-helmcharts.md"), os.path.join(dir_cluster_md, f"{namespace}-properties.md"))
+                        helper.delete_file(os.path.join(dir_cluster_md, f"{namespace}-helmcharts.md"))
+                    except:
+                        print(f"error: unable to list helmcharts of {namespace}")
+                except:
+                    print(f"error: unable to list properties of {namespace}")
 
-                # Create Markdown files from JSON for workspaces
-                for workspace_file in os.listdir(dir_tenant):
-                    workspace_name = workspace_file.replace('.json', '')
-                    create_file_markdown_itemvalue(dir_tenant_md, os.path.join(dir_tenant, workspace_file), f"Workspace properties")
+                # Workspaces
+                try:
+                    # JSON
+                    workspaces_properties(cluster, dir_tenant, namespace)
+
+                    # Markdown
+                    for workspace_file in os.listdir(dir_tenant):
+                        workspace_name = workspace_file.replace('.json', '')
+                        create_file_markdown_itemvalue(dir_tenant_md, os.path.join(dir_tenant, workspace_file), f"Workspace properties")
+                except:
+                    print(f"error: unable to list workspaces from {namespace}")
 
 
 # Get all Kubernetes contexts from a given kubeconfig file
@@ -138,7 +158,7 @@ def cluster_properties(cluster, dir_output):
         ("keycloak_url",    url + '/keycloak/'),
         ("monitoring_url",  url + '/monitoring/'),
         ("harbor_url",      url + '/harbor/'),
-        ("inventory_date",  now),
+        ("inventory_date",  today),
     ]
     cluster_dict.update(dict(properties))
 
@@ -176,7 +196,7 @@ def all_helmcharts(cluster, dir_output):
                 helper.create_json_file(file_json, helmcharts_list)
 
                 # Keep only separated namespaces files and merge cluster-wide helmcharts in a single file
-                if 'tenant' in os.path.basename(file_json):
+                if cluster.is_namespace_tenant(namespace):
                     helper.rename_file(file_json, namespace + '-helmcharts.json')
                 else:
                     files_json_to_merge.append(file_json)
@@ -199,8 +219,8 @@ def tenants_properties(cluster, dir_output):
 
             properties = [
                 ("tenant_name",     namespace),
-                ("swagger_url",     get_cosmotech_api_url(cluster, namespace)),
-                ("inventory_date",  now),
+                ("swagger_url",     cluster.get_cosmotech_api_url(namespace)),
+                ("inventory_date",  today),
             ]
             tenant_dict.update(dict(properties))
 
@@ -224,22 +244,31 @@ def workspaces_properties(cluster, dir_output, namespace):
 
     if cluster.is_namespace_tenant(namespace):
 
-        # Get Keycloak credentials from dedicated Kubernetes secret
-        keycloak_secret = cluster.get_secret_decoded(namespace, 'keycloak-babylon')
+        # Get API version to know if authentication is Keycloak or Azure
+        cosmotech_api_version = cluster.get_cosmotech_api_version(namespace)
+        platform_version = cosmotech_api_version.split('.')[0]
 
-        # Get a token from Keycloak with given credentials
-        keycloak = Keycloak(
-            base_url        = 'https://' + cluster.get_cluster_url() + '/keycloak',
-            realm           = namespace,
-            client_id       = keycloak_secret.get('client_id', ''),
-            client_secret   = keycloak_secret.get('client_secret', ''),
-        )
-        keycloak_token = keycloak.get_token()
+        if int(platform_version) < 4:
+            # Azure authentication
+            print('azure')
 
-        # Authenticate on Cosmo Tech API with Keycloak token
+            token = azure_token["access_token"]
+        else:
+            # Keyloak authentication
+            # Get Keycloak credentials from dedicated Kubernetes secret
+            keycloak_secret = cluster.get_secret_decoded(namespace, 'keycloak-babylon')
+            keycloak = Keycloak(
+                base_url        = 'https://' + cluster.get_cluster_url() + '/keycloak',
+                realm           = namespace,
+                client_id       = keycloak_secret.get('client_id', ''),
+                client_secret   = keycloak_secret.get('client_secret', ''),
+            )
+            keycloak_token = keycloak.get_token()
+            token = keycloak_token["access_token"]
+
         cosmotech_api = CosmotechAPI(
-            url = get_cosmotech_api_url(cluster, namespace),
-            token = keycloak_token["access_token"],
+            url = cluster.get_cosmotech_api_url(namespace),
+            token = token,
         )
 
         workspaces_dict={}
@@ -258,7 +287,7 @@ def workspaces_properties(cluster, dir_output, namespace):
                         ("solution_repository",     solution.get('repository', 'n/a')),
                         ("solution_version",        solution.get('version', 'n/a')),
                         ("webapp_url",              "to do"),
-                        ("inventory_date",          now),
+                        ("inventory_date",          today),
                     ]
                     workspaces_dict.update(dict(properties))
 
@@ -286,21 +315,7 @@ def create_file_markdown_helmcharts(destination_dir, file_json, title):
             print(f"file created: {file_md}")
 
 
-# Get Cosmo Tech API URL
-def get_cosmotech_api_url(cluster, namespace):
-    if cluster.is_namespace_tenant(namespace):
-        for helm_release in cluster.get_namespaced_releases(namespace):
-
-            # Get the release name of the Cosmo Tech API chart
-            if 'cosmo' in helm_release and 'api' in helm_release:
-
-                # Cosmo Tech API URL
-                csm_api_path = cluster.get_helmchart_values(namespace, helm_release)['api']['version']
-                csm_api_url = f"https://{cluster.get_cluster_url()}/{namespace}/{csm_api_path}/"
-
-                return csm_api_url
-
-
+# Print help
 def help():
     text = """
 Automatic inventory of Cosmo Tech platforms
@@ -314,22 +329,20 @@ Usage: python -m main [OPTION]
     print(text)
 
 
+# Launch a job
 def job():
-    print(f"job started {now_detailed}")
+    print(f"job started {datetime.today().strftime('%Y-%m-%d_%H-%M-%S')}")
     main()
-    print(f"job finished {now_detailed}")
+    print(f"job finished {datetime.today().strftime('%Y-%m-%d_%H-%M-%S')}")
 
 
 if __name__ == "__main__":
-
-
     # Ensure an argument is provided
     try:
         option = sys.argv[1]
     except:
         option = ''
         print("missing operand\nTry with '--help' for more information.")
-
 
     # Run a single inventory
     if option in ['--once']:
@@ -364,4 +377,3 @@ if __name__ == "__main__":
 
     elif option in ['-h','--help']:
         help()
-
