@@ -54,14 +54,6 @@ def main():
 
 
     for cluster in available_clusters:
-
-        # azure = Azure(cluster.get_azure_subcription_id())
-        # print(cluster.get_cluster_name(), cluster.get_azure_subcription_id())
-        # # print(azure)
-        # print(azure.get_token())
-
-
-
         cluster_name = cluster.get_cluster_name()
 
         # JSON structure of the day for clusters
@@ -241,7 +233,6 @@ def workspaces_properties(cluster, dir_output, namespace):
     # - Workspaces name
     # - Webapps url
 
-
     if cluster.is_namespace_tenant(namespace):
 
         # Get API version to know if authentication is Keycloak or Azure
@@ -250,9 +241,23 @@ def workspaces_properties(cluster, dir_output, namespace):
 
         if int(platform_version) < 4:
             # Azure authentication
-            print('azure')
 
-            token = azure_token["access_token"]
+            azure_subcription_id = cluster.get_azure_subcription_id()
+            print(azure_subcription_id)
+
+            azure = Azure(azure_subcription_id)
+
+            resource_group = azure.get_resource_group_from_storage_name(cluster.get_cosmotech_api_storage_account(namespace))
+
+            print(resource_group)
+            rg_ressources = azure.get_resource_group_resources(resource_group)
+            if not rg_ressources:
+                print(f"error: empty resource group {resource_group}")
+            else:
+                for rg_ressource in rg_ressources:
+                    print(f"{rg_ressource['type']} -> {rg_ressource['name']}")
+
+
         else:
             # Keyloak authentication
             # Get Keycloak credentials from dedicated Kubernetes secret

@@ -240,3 +240,10 @@ class KubeCluster:
         api_helm_release_data = self.get_helmchart_release(namespace, api_helm_release_name)
         api_version = api_helm_release_data.get('chart').get('metadata').get('appVersion')
         return api_version
+
+
+    # Get Cosmo Tech API configured Azure Storage Account in values
+    def get_cosmotech_api_storage_account(self, namespace):
+        api_helm_release = self.get_cosmotech_api_helmchart(namespace)
+        api_storage_account = self.get_helmchart_values(namespace, api_helm_release)['config']['csm']['platform']['azure']['storage']['account-name']
+        return api_storage_account
