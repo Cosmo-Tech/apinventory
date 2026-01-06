@@ -204,11 +204,9 @@ def tenants_properties(cluster, dir_output):
     # - Cosmo Tech API Swagger URL
 
     tenant_dict = {}
-
     namespaces = cluster.get_namespaces()
     for namespace in namespaces:
         if cluster.is_namespace_tenant(namespace):
-
             properties = [
                 ("tenant_name",     namespace),
                 ("swagger_url",     cluster.get_cosmotech_api_url(namespace)),
@@ -216,8 +214,31 @@ def tenants_properties(cluster, dir_output):
             ]
             tenant_dict.update(dict(properties))
 
+            # Get API version to know if authentication is Keycloak or Azure
+            cosmotech_api_version = cluster.get_cosmotech_api_version(namespace)
+            platform_version = cosmotech_api_version.split('.')[0]
+            if int(platform_version) < 4:
+                azure_subcription_id = cluster.get_azure_subcription_id()
+                azure = Azure(azure_subcription_id)
+
+                rg = azure.get_resource_group_from_storage_name(cluster.get_cosmotech_api_storage_account(namespace))
+                rg_ressources = azure.get_resource_group_resources(rg)
+                if rg_ressources:
+                    for rg_ressource in rg_ressources:
+                        if rg_ressource['type'] == 'Microsoft.Storage/storageAccounts':
+                            tenant_dict.update(dict([('Azure Storage Account', rg_ressource['name'])]))
+
+                        if rg_ressource['type'] == 'Microsoft.ContainerRegistry/registries':
+                            tenant_dict.update(dict([('Azure ACR', rg_ressource['name'])]))
+
+                        if rg_ressource['type'] == 'Microsoft.Kusto/clusters':
+                            tenant_dict.update(dict([('Azure ADX', rg_ressource['name'])]))
+                else:
+                    print(f"error: empty resource group {resource_group}")
+
             # Save to JSON file of the day
             helper.create_json_file(os.path.join(dir_output, namespace + '-properties.json'), tenant_dict)
+            tenant_dict.clear()
 
 
 # Get properties of all Workspaces in a given tenant
@@ -245,17 +266,17 @@ def workspaces_properties(cluster, dir_output, namespace):
             azure_subcription_id = cluster.get_azure_subcription_id()
             print(azure_subcription_id)
 
-            azure = Azure(azure_subcription_id)
+            # azure = Azure(azure_subcription_id)
 
-            resource_group = azure.get_resource_group_from_storage_name(cluster.get_cosmotech_api_storage_account(namespace))
+            # resource_group = azure.get_resource_group_from_storage_name(cluster.get_cosmotech_api_storage_account(namespace))
 
-            print(resource_group)
-            rg_ressources = azure.get_resource_group_resources(resource_group)
-            if not rg_ressources:
-                print(f"error: empty resource group {resource_group}")
-            else:
-                for rg_ressource in rg_ressources:
-                    print(f"{rg_ressource['type']} -> {rg_ressource['name']}")
+            # print(resource_group)
+            # rg_ressources = azure.get_resource_group_resources(resource_group)
+            # if not rg_ressources:
+            #     print(f"error: empty resource group {resource_group}")
+            # else:
+            #     for rg_ressource in rg_ressources:
+            #         print(f"{rg_ressource['type']} -> {rg_ressource['name']}")
 
 
         else:

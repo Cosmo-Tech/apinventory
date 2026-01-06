@@ -32,6 +32,7 @@ class Azure:
             return []
 
         for resource in resources:
+            # print(resource)
             resource_info = {
                 "name": resource.name,
                 "type": resource.type,
@@ -56,6 +57,6 @@ class Azure:
             print(f"Erreur : Le Storage Account '{storage_account_name_clean}' est introuvable.")
             return None
 
-        rg_name = found_resources[0].id.split('/')[4]
+        rg_name = resources_list[0].id.split('/')[4]
         return rg_name
 

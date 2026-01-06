@@ -1,15 +1,15 @@
 # Automatic inventory of Cosmo Tech platforms
 
-This program intends to list existing deployments of Cosmo Tech tenants.
+This program intends to list existing deployments of Cosmo Tech platforms.
 
-It will reach Kubernetes clusters to get the list below:
-- Kubernetes clusters (names, versions, regions, URL)
-- Cosmo Tech API objects (IDs & names of organizations, solutions & workspaces)
-- Helm Charts (names, versions, services URL)
+It will reach Kubernetes clusters to informations from:
+* Kubernetes clusters
+* Cosmo Tech API
+* Azure resources
 
-<br>
+> [Inventory details are listed below](#inventory-details)
 
-Inventory of the day is stored in a dedicated directory and is available in markdown format.
+Inventory of the day is stored in a dedicated directory, in JSON format, and converted to Markdown format to a unique directory.
 
 ## How to
 ### Get Kubernetes clusters contexts
@@ -83,9 +83,12 @@ Inventory of the day is stored in a dedicated directory and is available in mark
 > Page name is `[tenant] tenant_name`
 
 #### Tenant properties
-| Item           | Value            |
-|----------------|------------------|
-| Swagger URL    | *url*            |
+| Item               | Value            |
+|--------------------|------------------|
+| Swagger URL        | *url*            |
+| *Azure resource 1* | *name*           |
+| *Azure resource 2* | *name*           |
+| *Azure resource n* | *name*           |
 
 #### Tenant Helm Charts
 | Namespace      | Name      | Chart version | App version  |
