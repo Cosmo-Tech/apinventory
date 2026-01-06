@@ -214,12 +214,12 @@ def tenants_properties(cluster, dir_output):
             ]
             tenant_dict.update(dict(properties))
 
+            # Add Azure resources if it's a platform < v5
             # Get API version to know if authentication is Keycloak or Azure
             cosmotech_api_version = cluster.get_cosmotech_api_version(namespace)
             platform_version = cosmotech_api_version.split('.')[0]
-            if int(platform_version) < 4:
-                azure_subcription_id = cluster.get_azure_subcription_id()
-                azure = Azure(azure_subcription_id)
+            if int(platform_version) < 5:
+                azure = Azure(cluster.get_azure_subcription_id())
 
                 rg = azure.get_resource_group_from_storage_name(cluster.get_cosmotech_api_storage_account(namespace))
                 rg_ressources = azure.get_resource_group_resources(rg)
@@ -235,6 +235,18 @@ def tenants_properties(cluster, dir_output):
                             tenant_dict.update(dict([('Azure ADX', rg_ressource['name'])]))
                 else:
                     print(f"error: empty resource group {resource_group}")
+
+                # Get App Registration list by filtering in their names
+                app_registrations_list = azure.get_apps_registration_list([namespace])
+                for app_registration in app_registrations_list:
+                    if 'Platform' in app_registration['name']:
+                        tenant_dict.update(dict([(app_registration['name'], app_registration['client_id'])]))
+
+                    if 'Swagger' in app_registration['name']:
+                        tenant_dict.update(dict([(app_registration['name'], app_registration['client_id'])]))
+
+                    if 'Babylon' in app_registration['name']:
+                        tenant_dict.update(dict([(app_registration['name'], app_registration['client_id'])]))
 
             # Save to JSON file of the day
             helper.create_json_file(os.path.join(dir_output, namespace + '-properties.json'), tenant_dict)

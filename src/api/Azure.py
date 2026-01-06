@@ -1,5 +1,7 @@
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.resource import ResourceManagementClient
+import requests
+
 
 class Azure:
 
@@ -60,3 +62,50 @@ class Azure:
         rg_name = resources_list[0].id.split('/')[4]
         return rg_name
 
+
+    # Get App registration list based on filters list
+    def get_apps_registration_list(self, criteria_list, match_all=True):
+        if not criteria_list:
+            return []
+
+        token_graph = self.credential.get_token("https://graph.microsoft.com/.default")
+        headers = {
+            "Authorization": f"Bearer {token_graph.token}",
+            "Content-Type": "application/json",
+            "ConsistencyLevel": "eventual",
+        }
+
+        # Build KQL search request
+        # Syntax: "displayName:Keyword1" AND "displayName:Keyword2"
+        search_parts = []
+        for term in criteria_list:
+            term_clean = term.replace('"', '').strip()
+            search_parts.append(f'"displayName:{term_clean}"')
+
+        operator = " AND " if match_all else " OR "
+        search_query = operator.join(search_parts)
+        params = {
+            '$search': search_query,
+            '$select': 'displayName,appId,createdDateTime',
+            '$count': 'true',
+        }
+
+        graph_api_url = "https://graph.microsoft.com/v1.0/applications"
+        apps_list = []
+        try:
+            response = requests.get(graph_api_url, headers=headers, params=params)
+            if response.status_code != 200:
+                print(f"error: Azure Microsoft Graph API {response.status_code}: {response.text}")
+                return []
+
+            data = response.json()
+            if 'value' in data:
+                for app in data['value']:
+                    apps_list.append({
+                        "name": app.get('displayName'),
+                        "client_id": app.get('appId')
+                    })
+        except Exception as e:
+            print(f"error: {e}")
+
+        return apps_list
