@@ -64,6 +64,7 @@ class Azure:
 
 
     # Get App registration list based on filters list
+    # Based on Microsoft Graph API
     def get_apps_registration_list(self, criteria_list, match_all=True):
         if not criteria_list:
             return []
@@ -81,7 +82,6 @@ class Azure:
         for term in criteria_list:
             term_clean = term.replace('"', '').strip()
             search_parts.append(f'"displayName:{term_clean}"')
-
         operator = " AND " if match_all else " OR "
         search_query = operator.join(search_parts)
         params = {

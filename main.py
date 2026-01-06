@@ -207,6 +207,7 @@ def tenants_properties(cluster, dir_output):
     namespaces = cluster.get_namespaces()
     for namespace in namespaces:
         if cluster.is_namespace_tenant(namespace):
+            tenant_dict.clear()
             properties = [
                 ("tenant_name",     namespace),
                 ("swagger_url",     cluster.get_cosmotech_api_url(namespace)),
@@ -237,20 +238,20 @@ def tenants_properties(cluster, dir_output):
                     print(f"error: empty resource group {resource_group}")
 
                 # Get App Registration list by filtering in their names
-                app_registrations_list = azure.get_apps_registration_list([namespace])
+                app_registrations_list = azure.get_apps_registration_list([namespace], match_all=True)
                 for app_registration in app_registrations_list:
-                    if 'Platform' in app_registration['name']:
-                        tenant_dict.update(dict([(app_registration['name'], app_registration['client_id'])]))
+                    app_registration_name = app_registration['name']
+                    if namespace in app_registration_name and 'Platform' in app_registration_name:
+                        tenant_dict.update(dict([(app_registration_name, app_registration['client_id'])]))
 
-                    if 'Swagger' in app_registration['name']:
-                        tenant_dict.update(dict([(app_registration['name'], app_registration['client_id'])]))
+                    if namespace in app_registration_name and 'Swagger' in app_registration_name:
+                        tenant_dict.update(dict([(app_registration_name, app_registration['client_id'])]))
 
-                    if 'Babylon' in app_registration['name']:
-                        tenant_dict.update(dict([(app_registration['name'], app_registration['client_id'])]))
+                    if namespace in app_registration_name and 'Babylon' in app_registration_name:
+                        tenant_dict.update(dict([(app_registration_name, app_registration['client_id'])]))
 
             # Save to JSON file of the day
             helper.create_json_file(os.path.join(dir_output, namespace + '-properties.json'), tenant_dict)
-            tenant_dict.clear()
 
 
 # Get properties of all Workspaces in a given tenant
