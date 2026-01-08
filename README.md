@@ -26,11 +26,15 @@ Inventory of the day is stored in a dedicated directory, in JSON format, and con
 		```
 
 ### Run from source
-* clone current repo
+* Clone current repo
 	```
 	git clone git@github.com:Cosmo-Tech/apinventory.git && cd apinventory
 	```
-* python venv
+* Get `.env`
+	```
+	curl https://raw.githubusercontent.com/Cosmo-Tech/apinventory/refs/heads/main/.env.example -o .env
+	```
+* Python venv
 	* install
 		```
 		python -m venv .venv
@@ -43,19 +47,26 @@ Inventory of the day is stored in a dedicated directory, in JSON format, and con
 		```
 		python -m pip install -r requirements.txt
 		```
-* run
+* Start
 	```
 	python -m main
 	```
 
 ### Run from Docker
-* get docker-compose.yaml
+* Get `docker-compose.yaml`
 	```
-	wget https://raw.githubusercontent.com/Cosmo-Tech/apinventory/refs/heads/main/docker-compose.yaml
+	curl -O https://raw.githubusercontent.com/Cosmo-Tech/apinventory/refs/heads/main/docker-compose.yaml
 	```
+* Get `.env`
+	```
+	curl https://raw.githubusercontent.com/Cosmo-Tech/apinventory/refs/heads/main/.env.example -o .env
+	```
+* Fill `.env` according to your needs
+* Start
 	```
 	docker compose up -d
 	```
+
 
 ## Inventory details
 ### Kubernetes cluter
