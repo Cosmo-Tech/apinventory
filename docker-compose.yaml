@@ -1,0 +1,10 @@
+
+services:
+  apiventory:
+    # build: .
+    image: ghcr.io/cosmo-tech/apinventory:latest
+    restart: unless-stopped
+    env_file: ".env"
+    volumes:
+      - ./_inventory_from_docker:/apiventory/_inventory/
+      - ${PWD}/_kubeconfig:/apiventory/_kubeconfig
