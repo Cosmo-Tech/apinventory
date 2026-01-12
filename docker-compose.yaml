@@ -1,4 +1,3 @@
-
 services:
   apiventory:
     # build: .
@@ -6,5 +5,23 @@ services:
     restart: unless-stopped
     env_file: ".env"
     volumes:
-      - ./_inventory_from_docker:/apiventory/_inventory/
+      - _inventory_from_docker:/apiventory/_inventory/
       - ${PWD}/_kubeconfig:/apiventory/_kubeconfig
+      - $HOME/.azure:/root/.azure
+
+  # docsify:
+  #   image: nginx:alpine
+  #   container_name: docsify-nginx
+  #   # /!\ 'restart: always' is important to update the inventory:
+  #   #      => Nginx is launched for a given time with the script gen_sidebar.sh, this permit to update Docsify sidebar content
+  #   restart: always
+  #   ports:
+  #     - "8080:80"
+  #   volumes:
+  #     - ./index.html:/usr/share/nginx/html/index.html:ro          # index.html is available in "docsify" folder
+  #     - ./gen_sidebar.sh:/docker-entrypoint.d/gen_sidebar.sh      # gen_sidebar.sh is available in "docsify" folder
+  #     - _inventory_from_docker:/usr/share/nginx/html/files
+  #   entrypoint: ["/bin/sh", "/docker-entrypoint.d/gen_sidebar.sh"]
+
+volumes:
+  _inventory_from_docker:

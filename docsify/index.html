@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Cosmo Tech platforms inventory</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify-sidebar-collapse/dist/sidebar.min.css" />
+
+  <style>
+    a, .custom-search-path {
+      color: #ffb039 !important;
+    }
+    .custom-search-path {
+      background-color: #f8f8f7 !important;
+    }
+
+    .matching-post h2,
+    .matching-post p {
+      display: none !important;
+    }
+
+    .custom-search-path {
+      font-size: 14px;
+      color: #42b983;
+      font-weight: bold;
+      padding: 5px 0;
+      display: block;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="app">Cosmo Tech platforms inventory</div>
+
+  <script>
+    window.$docsify = {
+      basePath: '/files/',
+      loadSidebar: true,
+      subMaxLevel: 0,
+      auto2top: true,
+      sidebarDisplayLevel: 0,
+
+      search: {
+        placeholder: 'Search workspace, tenant or cluster...',
+        noData: 'Nothing found',
+        depth: 6,
+      },
+
+      plugins: [
+        function(hook, vm) {
+
+          // Searchbar improvement: display only clusters/tenants/workspaces names
+          hook.beforeEach(function(content) {
+            var path = vm.route.file;
+            if(path) {
+                var filename = path.split('/').pop().replace('.md', '');
+                return '# ' + filename + '\n\n' + content;
+            }
+            return content;
+          });
+          hook.doneEach(function() {
+            const searchPanel = document.querySelector('.sidebar');
+            if (!searchPanel) return;
+            const observer = new MutationObserver(function(mutations) {
+              const results = document.querySelectorAll('.matching-post a');
+              results.forEach(function(link) {
+                if (link.querySelector('.custom-search-path')) return;
+
+                const fullHref = link.getAttribute('href');
+                let cleanPath = fullHref.split('?')[0].replace('#/', '');
+                let parts = cleanPath.split('/');
+                if (parts.length > 0 && (parts[0] === 'markdown' || parts[0] === 'files')) {
+                    parts.shift();
+                }
+                let displayPath = parts.join(' > ');
+                link.innerHTML = '<span class="custom-search-path">' + displayPath + '</span>';
+              });
+            });
+
+            observer.observe(searchPanel, { childList: true, subtree: true });
+          });
+        }
+      ]
+    };
+  </script>
+
+  <script src="//cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/docsify@4/lib/plugins/zoom-image.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/docsify-copy-code/dist/docsify-copy-code.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/docsify-sidebar-collapse/dist/docsify-sidebar-collapse.min.js"></script>
+
+</body>
+</html>
