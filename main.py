@@ -221,38 +221,46 @@ def tenants_properties(cluster, dir_output):
             cosmotech_api_version = cluster.get_cosmotech_api_version(namespace)
             platform_version = cosmotech_api_version.split('.')[0]
             if int(platform_version) < 5:
-                azure_subcription_id = cluster.get_azure_subcription_id()
-                azure = Azure(azure_subcription_id)
+                try:
+                    vault = Vault(cluster)
+                    azure_subcription_id = cluster.get_azure_subcription_id()
+                    azure_tenant_id = cluster.get_azure_entra_tenant_id(namespace)
+                    azure_client_id = vault.get_secret_from_unknown_mount(f"{cluster.get_azure_entra_tenant_id(namespace)}/babylon/config/{namespace}/babylon")['client_id']
+                    azure_client_secret = vault.get_secret_from_unknown_mount(f"{cluster.get_azure_entra_tenant_id(namespace)}/babylon/{namespace}/client")['secret']
+                    azure = Azure(azure_subcription_id, azure_tenant_id, azure_client_id, azure_client_secret)
 
-                tenant_dict.update(dict([('Azure Subscription ID', azure_subcription_id)]))
+                    tenant_dict.update(dict([('Azure Subscription ID', azure_subcription_id)]))
 
-                rg = azure.get_resource_group_from_storage_name(cluster.get_cosmotech_api_storage_account(namespace))
-                rg_ressources = azure.get_resource_group_resources(rg)
-                if rg_ressources:
-                    for rg_ressource in rg_ressources:
-                        if rg_ressource['type'] == 'Microsoft.Storage/storageAccounts':
-                            tenant_dict.update(dict([('Azure Storage Account', rg_ressource['name'])]))
+                    rg = azure.get_resource_group_from_storage_name(cluster.get_cosmotech_api_storage_account(namespace))
+                    rg_ressources = azure.get_resource_group_resources(rg)
+                    if rg_ressources:
+                        for rg_ressource in rg_ressources:
+                            if rg_ressource['type'] == 'Microsoft.Storage/storageAccounts':
+                                tenant_dict.update(dict([('Azure Storage Account', rg_ressource['name'])]))
 
-                        if rg_ressource['type'] == 'Microsoft.ContainerRegistry/registries':
-                            tenant_dict.update(dict([('Azure ACR', rg_ressource['name'])]))
+                            if rg_ressource['type'] == 'Microsoft.ContainerRegistry/registries':
+                                tenant_dict.update(dict([('Azure ACR', rg_ressource['name'])]))
 
-                        if rg_ressource['type'] == 'Microsoft.Kusto/clusters':
-                            tenant_dict.update(dict([('Azure ADX', rg_ressource['name'])]))
-                else:
-                    print(f"error: empty resource group {resource_group}")
+                            if rg_ressource['type'] == 'Microsoft.Kusto/clusters':
+                                tenant_dict.update(dict([('Azure ADX', rg_ressource['name'])]))
+                    else:
+                        print(f"error: empty resource group {resource_group}")
 
-                # Get App Registration list by filtering in their names
-                app_registrations_list = azure.get_apps_registration_list([namespace], match_all=True)
-                for app_registration in app_registrations_list:
-                    app_registration_name = app_registration['name']
-                    if namespace in app_registration_name and 'Platform' in app_registration_name:
-                        tenant_dict.update(dict([(app_registration_name, app_registration['client_id'])]))
+                    # Get App Registration list by filtering in their names
+                    app_registrations_list = azure.get_apps_registration_list([namespace], match_all=True)
+                    for app_registration in app_registrations_list:
+                        app_registration_name = app_registration['name']
+                        if namespace in app_registration_name and 'Platform' in app_registration_name:
+                            tenant_dict.update(dict([(app_registration_name, app_registration['client_id'])]))
 
-                    if namespace in app_registration_name and 'Swagger' in app_registration_name:
-                        tenant_dict.update(dict([(app_registration_name, app_registration['client_id'])]))
+                        if namespace in app_registration_name and 'Swagger' in app_registration_name:
+                            tenant_dict.update(dict([(app_registration_name, app_registration['client_id'])]))
 
-                    if namespace in app_registration_name and 'Babylon' in app_registration_name:
-                        tenant_dict.update(dict([(app_registration_name, app_registration['client_id'])]))
+                        if namespace in app_registration_name and 'Babylon' in app_registration_name:
+                            tenant_dict.update(dict([(app_registration_name, app_registration['client_id'])]))
+
+                except Exception as e:
+                    print(f"error: {e}")
 
             # Save to JSON file of the day
             helper.create_json_file(os.path.join(dir_output, namespace + '-properties.json'), tenant_dict)
@@ -284,10 +292,12 @@ def workspaces_properties(cluster, dir_output, namespace):
             print(azure_subcription_id)
 
 
-            vault = Vault(cluster.get_cluster_url())
-            print(vault)
-            print(vault.get_root_token())
-            print(vault.get_secret())
+            # vault = Vault(cluster)
+
+            # client_id = vault.get_secret_from_unknown_mount(f"{cluster.get_azure_entra_tenant_id(ns)}/babylon/config/{ns}/babylon")['client_id']
+            # client_secret = vault.get_secret_from_unknown_mount(f"{cluster.get_azure_entra_tenant_id(ns)}/babylon/{ns}/client")['secret']
+            # print(client_id)
+            # print(client_secret)
 
             # azure = Azure(azure_subcription_id)
 
@@ -436,6 +446,9 @@ if __name__ == "__main__":
 
     # Just an option to test things during development
     elif option in ['--test']:
+
+        namespace_list = ['sch-adx-dev', 'adeo-dev', 'wa-adx-dev']
+
         # Ensure cluster is reachable to avoid killing program
         available_clusters = []
         for context in get_all_contexts(kubeconfig_file):
@@ -448,12 +461,13 @@ if __name__ == "__main__":
             except:
                 print(f"error: failed to connect to context '{context}'. Is cluster down ?")
 
-        vault = Vault(cluster)
-        # print(vault)
-        # print(vault.get_root_token(cluster))
-        # print(vault.get_secret("cosmotech/e413b834-8be8-4822-a370-be619545cb49/babylon/config/sch-adx-dev/babylon"))
-        vault_secret = vault.get_secret("cosmotech/e413b834-8be8-4822-a370-be619545cb49/babylon/config/sch-adx-dev/babylon")
-        principal_id = vault_secret['principal_id']
+            vault = Vault(cluster)
 
-        print(principal_id)
-
+            for ns in namespace_list:
+                try:
+                    client_id = vault.get_secret_from_unknown_mount(f"{cluster.get_azure_entra_tenant_id(ns)}/babylon/config/{ns}/babylon")['client_id']
+                    client_secret = vault.get_secret_from_unknown_mount(f"{cluster.get_azure_entra_tenant_id(ns)}/babylon/{ns}/client")['secret']
+                    print(client_id)
+                    print(client_secret)
+                except Exception as e:
+                    print("")

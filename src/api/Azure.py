@@ -1,14 +1,19 @@
-from azure.identity import DefaultAzureCredential
+# from azure.identity import DefaultAzureCredential
+from azure.identity import ClientSecretCredential
 from azure.mgmt.resource import ResourceManagementClient
 import requests
 
 
 class Azure:
 
-    def __init__(self, subscription_id):
+    def __init__(self, subscription_id, tenant_id, client_id, client_secret):
         self.subscription_id = subscription_id
+        self.tenant_id = tenant_id
+        self.client_id = client_id
+        self.client_secret = client_secret
         try:
-            self.credential = DefaultAzureCredential()
+            # self.credential = DefaultAzureCredential()
+            self.credential = ClientSecretCredential(self.tenant_id, self.client_id, self.client_secret)
             self.resource_client = ResourceManagementClient(self.credential, self.subscription_id)
         except Exception as e:
             print(f"error: {e}")
@@ -110,3 +115,4 @@ class Azure:
             print(f"error: {e}")
 
         return apps_list
+

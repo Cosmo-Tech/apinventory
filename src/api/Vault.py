@@ -1,7 +1,5 @@
 import hvac
 import sys
-from src.api.Kubernetes import KubeCluster
-
 
 class Vault:
 
@@ -51,5 +49,34 @@ class Vault:
                 return response['data']
 
             except Exception as e:
-                print(f"error: secret not found. Does mount point '{mount_point}' exist? {e}")
+                print(f"error: secret not found: {e}")
                 return None
+
+
+    # List mount points of the Vault
+    def list_mounts(self):
+        mounts_list = []
+        try:
+            r = self.client.sys.list_mounted_secrets_engines()
+            data = r['data']
+            for item in data:
+                if item not in ['cubbyhole/', 'sys/', 'identity/', 'organization/']:
+                    mounts_list.append(str(item))
+
+        except Exception as e:
+            print(f"error: {e}")
+
+        return mounts_list
+
+
+    # Dynamically test if secret exists to get its content
+    # Goal is to be able to find where a secret is stored when missing unpredictable mount point
+    def get_secret_from_unknown_mount(self, path):
+        try:
+            mounts = self.list_mounts()
+            for mount in mounts:
+                    secret = self.get_secret(mount + path)
+                    return secret
+        except Exception as e:
+            print(f"error: {e}")
+

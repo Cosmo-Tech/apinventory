@@ -53,15 +53,19 @@ class KubeCluster:
 
 
     # Get info from current loaded context
-    # Trick here is to get the URL from a stable cluster-wide endpoint over Cosmo Tech platforms versions, and the winner is... Keycloak
+    # Trick here is to get the URL from a stable cluster-wide endpoint over Cosmo Tech platforms versions, and the winner is... Keycloak, and fallback on Vault if Keycloak not found
     def get_cluster_url(self):
-        ingress = self.client_NetworkingV1Api.read_namespaced_ingress('keycloak', 'keycloak').to_dict()
         try:
+            ingress = self.client_NetworkingV1Api.read_namespaced_ingress('keycloak', 'keycloak').to_dict()
             rules = ingress.get('spec').get('rules')
             for rule in rules:
                 url = rule['host']
         except:
-            url = 'n/a'
+            ingress = self.client_NetworkingV1Api.read_namespaced_ingress('vault', 'vault').to_dict()
+            rules = ingress.get('spec').get('rules')
+            for rule in rules:
+                url = rule['host']
+            # url = 'n/a'
         return url
 
 
@@ -217,13 +221,26 @@ class KubeCluster:
         return subscription_id
 
 
+    # Get Azure Entra tenant ID from a Cosmo Tech API Helm Chart values
+    def get_azure_entra_tenant_id(self, namespace):
+        try:
+            api_helm_release = self.get_cosmotech_api_helmchart(namespace)
+            entra_tenant_id = self.get_helmchart_values(namespace, api_helm_release)['config']['csm']['platform']['azure']['credentials']['tenantId']
+            return entra_tenant_id
+        except Exception as e:
+            print(f"error: {e}")
+
+
     # Get Cosmo Tech API version from its Helm Chart release
     def get_cosmotech_api_helmchart(self, namespace):
-        for helm_release in self.get_helmchart_releases_list(namespace):
+        try:
+            for helm_release in self.get_helmchart_releases_list(namespace):
 
-            # Get the release name of the Cosmo Tech API chart
-            if 'cosmo' in helm_release and 'api' in helm_release:
-                return helm_release
+                # Get the release name of the Cosmo Tech API chart
+                if 'cosmo' in helm_release and 'api' in helm_release:
+                    return helm_release
+        except Exception as e:
+            print(f"error: {e}")
 
 
     # Get Cosmo Tech API URL
