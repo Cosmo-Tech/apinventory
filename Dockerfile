@@ -1,4 +1,3 @@
-
 FROM python:alpine
 
 WORKDIR /apiventory

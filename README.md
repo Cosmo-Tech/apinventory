@@ -126,6 +126,26 @@ Inventory of the day is stored in a dedicated directory, in JSON format, and con
 | webapp_url           | *url*        |
 | inventory_date       | *date*       |
 
+
+
+## Developpers
+### Classes
+* src/api/Cosmotech/CosmotechAPI
+  * all platforms versions
+  * connect to a Cosmo Tech API and list objects from it
+* src/api/Kubernetes/KubeCluster
+  * all platforms versions
+  * connect to a Kubernetes cluster and list differents resources from it
+* src/api/Keycloak/Keycloak
+  * v4/5 platforms only
+  * generate a token from the platform Keycloak to use on Cosmo Tech API
+* src/api/Azure/Azure
+  * v3 platforms only
+  * connect to Azure and list SaaS resoruces
+* src/api/Vault/Vault
+  * v3 platforms only
+  * connect to the Vault of the platform to retrieve access for Azure
+
 <br>
 <br>
 <br>

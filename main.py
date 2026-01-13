@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from src.api.Kubernetes import KubeCluster
 from src.api.Keycloak import Keycloak
 from src.api.Azure import Azure
+from src.api.Vault import Vault
 from src.api.Cosmotech import CosmotechAPI
 from src.views.Markdown import Markdown
 
@@ -282,6 +283,12 @@ def workspaces_properties(cluster, dir_output, namespace):
             azure_subcription_id = cluster.get_azure_subcription_id()
             print(azure_subcription_id)
 
+
+            vault = Vault(cluster.get_cluster_url())
+            print(vault)
+            print(vault.get_root_token())
+            print(vault.get_secret())
+
             # azure = Azure(azure_subcription_id)
 
             # resource_group = azure.get_resource_group_from_storage_name(cluster.get_cosmotech_api_storage_account(namespace))
@@ -417,5 +424,36 @@ if __name__ == "__main__":
             schedule.run_pending()
             time.sleep(10)
 
+    # Display help
     elif option in ['-h','--help']:
         help()
+
+
+
+
+
+
+
+    # Just an option to test things during development
+    elif option in ['--test']:
+        # Ensure cluster is reachable to avoid killing program
+        available_clusters = []
+        for context in get_all_contexts(kubeconfig_file):
+            print(f"TESTING ON CONTEXT {context}")
+            cluster = KubeCluster(kubeconfig_file, context)
+            try:
+                # If the version is returned, it mean the cluster is up (and if not, it means the cluster is down or not reachable)
+                cluster.get_cluster_version()
+                available_clusters.append(cluster)
+            except:
+                print(f"error: failed to connect to context '{context}'. Is cluster down ?")
+
+        vault = Vault(cluster)
+        # print(vault)
+        # print(vault.get_root_token(cluster))
+        # print(vault.get_secret("cosmotech/e413b834-8be8-4822-a370-be619545cb49/babylon/config/sch-adx-dev/babylon"))
+        vault_secret = vault.get_secret("cosmotech/e413b834-8be8-4822-a370-be619545cb49/babylon/config/sch-adx-dev/babylon")
+        principal_id = vault_secret['principal_id']
+
+        print(principal_id)
+
