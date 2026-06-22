@@ -298,12 +298,12 @@ def workspaces_properties(cluster, dir_output, namespace):
         else:
             # Keyloak authentication
             # Get Keycloak credentials from dedicated Kubernetes secret
-            keycloak_secret = cluster.get_secret_decoded(namespace, 'keycloak-babylon')
+            keycloak_secret = cluster.get_secret_decoded(namespace, 'babylon-config')
             keycloak = Keycloak(
                 base_url        = 'https://' + cluster.get_cluster_url() + '/keycloak',
                 realm           = namespace,
-                client_id       = keycloak_secret.get('client_id', ''),
-                client_secret   = keycloak_secret.get('client_secret', ''),
+                client_id       = keycloak_secret.get('keycloak_client_id', ''),
+                client_secret   = keycloak_secret.get('keycloak_client_secret', ''),
             )
             keycloak_token = keycloak.get_token()
             token = keycloak_token["access_token"]
