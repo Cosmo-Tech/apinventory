@@ -67,6 +67,9 @@ Inventory of the day is stored in a dedicated directory, in JSON format, and con
 	docker compose up -d
 	```
 
+### Run with VitePress
+* docker compose up vitepress-inventory -d --build --force-recreate
+
 
 ## Inventory details
 ### Kubernetes cluter
